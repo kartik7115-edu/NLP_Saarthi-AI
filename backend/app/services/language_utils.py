@@ -8,7 +8,7 @@ the target script, ignoring protected Latin tokens (scheme names, URLs, amounts)
 """
 import re
 import unicodedata
-from typing import Optional
+from typing import Optional, Tuple
 
 SUPPORTED_LANGUAGES = ("en", "hi", "bn", "te", "mr", "ta", "gu", "kn", "ml", "pa", "or")
 
@@ -109,10 +109,83 @@ def source_language_for_query(query: str, answer_lang: str) -> str:
     The selected answer language says nothing about what the user typed: an English question with Hindi selected
     must not be translated "from Hindi". Latin script -> treated as English; a script matching the selected
     language -> that language; any other script -> 'auto' (let the provider detect it).
+
+    Devanagari is shared by Hindi and Marathi, so the script alone cannot say which one was typed: a Marathi question
+    with Hindi selected (or the reverse) is identified lexically and translated from the language it is really in.
     """
     script = dominant_script(query)
     if script is None or script == "latin":
         return "en"
+    if script == "devanagari":
+        guess = detect_devanagari_language(query)
+        if guess:
+            return guess
     if LANGUAGE_SCRIPT.get(answer_lang) == script:
         return answer_lang
     return "auto"
+
+
+# ----------------------------------------------------------------------------- Hindi vs Marathi
+# Hindi and Marathi share the Devanagari script, so a script check can never tell them apart. These are frequent
+# function words / inflections that occur in only one of the two languages (words common to both are left out).
+HI_MARKERS = frozenset("""है हैं था थे थी के में और लिए नहीं यह वह से को पर हूँ हूं आप आपको आपके सकते सकता सकती
+चाहिए जाता जाती जाते गया गई भी कौन क्या कैसे अगर लेकिन तक साथ द्वारा वाले वाली किया करें करना होगा होती होता""".split())
+MR_MARKERS = frozenset("""आहे आहेत आणि नाही मध्ये साठी तुम्ही तुमच्या तुम्हाला तुमचे तुमची आपण करा करू शकता शकतो
+शकते किंवा असे असेल असतो असते होते केले जाते मिळते मिळेल मिळतात पण कसे काय कोणत्या कोणते द्वारे आहोत नसेल""".split())
+HI_SUFFIXES = ("ों",)                                         # oblique plural: किसानों, योजनाओं
+MR_SUFFIXES = ("च्या", "साठी", "मध्ये", "ांना", "ांची", "ांचे", "ाचा", "ाची", "ाचे", "ाला")   # शेतकऱ्यांसाठी, योजनेच्या
+_DEV_WORD = re.compile(r"[ऀ-ॿ]+")
+
+try:                                                           # statistical n-gram detector already used by translator.py
+    from langdetect import DetectorFactory as _DetectorFactory, detect_langs as _detect_langs
+    _DetectorFactory.seed = 0                                  # langdetect is random unless seeded
+except Exception:                                              # pragma: no cover - langdetect is a hard dependency
+    _detect_langs = None
+
+
+def devanagari_marker_counts(text: str) -> Tuple[int, int]:
+    """(hindi_hits, marathi_hits) for the Devanagari words of `text`."""
+    hi = mr = 0
+    for w in _DEV_WORD.findall(text or ""):
+        if w in HI_MARKERS or (len(w) > 3 and w.endswith(HI_SUFFIXES)):
+            hi += 1
+        if w in MR_MARKERS or (len(w) > 4 and w.endswith(MR_SUFFIXES)):
+            mr += 1
+    return hi, mr
+
+
+def detect_devanagari_language(text: str) -> Optional[str]:
+    """'hi' or 'mr' for Devanagari text, None when the text does not say clearly enough.
+
+    1. language-specific function words / inflections (decisive when one side clearly dominates);
+    2. otherwise the langdetect n-gram model, only with enough distinct words and a confident result.
+    """
+    words = _DEV_WORD.findall(text or "")
+    if len(words) < 2:
+        return None
+    hi, mr = devanagari_marker_counts(text)
+    if hi >= 2 and hi >= 2 * max(mr, 1):
+        return "hi"
+    if mr >= 2 and mr >= 2 * max(hi, 1):
+        return "mr"
+    if _detect_langs is not None and len(set(words)) >= 4:
+        try:
+            probs = {p.lang: p.prob for p in _detect_langs(" ".join(words))}
+        except Exception:                                      # langdetect raises on text it cannot handle
+            probs = {}
+        best = max(("hi", "mr"), key=lambda l: probs.get(l, 0.0))
+        if probs.get(best, 0.0) >= 0.8:
+            return best
+    if hi > mr:
+        return "hi"
+    if mr > hi:
+        return "mr"
+    return None
+
+
+def wrong_devanagari_language(text: str, lang: str) -> bool:
+    """True when `text` is supposed to be Hindi/Marathi but is clearly the OTHER of the two languages."""
+    if lang not in ("hi", "mr"):
+        return False
+    guess = detect_devanagari_language(text)
+    return guess is not None and guess != lang

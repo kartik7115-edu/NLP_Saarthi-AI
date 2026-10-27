@@ -13,6 +13,10 @@ const I18N = {
         noCache: "इंटरनेट नहीं है और यह जानकारी सेव नहीं है।",
         noVoice:        "इस ब्राउज़र में इस भाषा की आवाज़ उपलब्ध नहीं है, इसलिए उत्तर पढ़कर नहीं सुनाया गया।",
         notTranslated:  "उत्तर का आपकी भाषा में अनुवाद नहीं हो सका, इसलिए वह अंग्रेज़ी में दिखाया गया है।",
+        listen:         "सुनें",
+        ttsBlocked:     "ब्राउज़र ने उत्तर अपने-आप पढ़कर सुनाने नहीं दिया। सुनने के लिए “सुनें” दबाएँ, या स्क्रीन पर पढ़ें।",
+        voicesLoading:  "इस ब्राउज़र में आवाज़ें अभी लोड नहीं हुई हैं। फिर से कोशिश करने के लिए “सुनें” दबाएँ, या उत्तर स्क्रीन पर पढ़ें।",
+        ttsFailed:      "इस ब्राउज़र में उत्तर पढ़कर नहीं सुनाया जा सका। कृपया उसे स्क्रीन पर पढ़ें।",
         serverError: "सर्वर में समस्या है। कृपया फिर से कोशिश करें।",
         offlineAnswer: "ऑफलाइन जवाब",
         savedAnswer: "सेव किया गया",
@@ -35,6 +39,10 @@ const I18N = {
         noCache: "No internet and no saved info found.",
         noVoice:        "No voice for this language is available in this browser, so the answer was not read aloud.",
         notTranslated:  "The answer could not be translated into your language, so it is shown in English.",
+        listen:         "Listen",
+        ttsBlocked:     "The browser did not allow the answer to be read aloud automatically. Tap “Listen” to hear it, or read it on screen.",
+        voicesLoading:  "This browser has not loaded its voices yet. Tap “Listen” to try again, or read the answer on screen.",
+        ttsFailed:      "The answer could not be read aloud in this browser. Please read it on screen.",
         serverError: "Server error. Please try again later.",
         offlineAnswer: "Offline Response",
         savedAnswer: "Saved Response",
@@ -57,6 +65,10 @@ const I18N = {
         noCache: "ইন্টারনেট নেই এবং কোনো সংরক্ষিত তথ্য নেই।",
         noVoice:        "এই ব্রাউজারে এই ভাষার কণ্ঠস্বর নেই, তাই উত্তরটি পড়ে শোনানো হয়নি।",
         notTranslated:  "উত্তরটি আপনার ভাষায় অনুবাদ করা যায়নি, তাই ইংরেজিতে দেখানো হয়েছে।",
+        listen:         "শুনুন",
+        ttsBlocked:     "ব্রাউজার উত্তরটি স্বয়ংক্রিয়ভাবে পড়ে শোনাতে দেয়নি। শুনতে “শুনুন” চাপুন, অথবা স্ক্রিনে পড়ুন।",
+        voicesLoading:  "এই ব্রাউজারে কণ্ঠস্বর এখনও লোড হয়নি। আবার চেষ্টা করতে “শুনুন” চাপুন, অথবা উত্তরটি স্ক্রিনে পড়ুন।",
+        ttsFailed:      "এই ব্রাউজারে উত্তরটি পড়ে শোনানো যায়নি। অনুগ্রহ করে স্ক্রিনে পড়ুন।",
         serverError: "সার্ভারে যোগাযোগ করা যাচ্ছে না।",
         offlineAnswer: "অফলাইন উত্তর",
         savedAnswer: "সংরক্ষিত উত্তর",
@@ -79,6 +91,10 @@ const I18N = {
         noCache: "ఇంటర్నెట్ లేదు మరియు సేవ్ చేసిన సమాచారం లేదు.",
         noVoice:        "ఈ బ్రౌజర్‌లో ఈ భాషకు వాయిస్ అందుబాటులో లేదు, కాబట్టి సమాధానం చదివి వినిపించలేదు.",
         notTranslated:  "సమాధానాన్ని మీ భాషలోకి అనువదించలేకపోయాము, కాబట్టి ఇంగ్లీష్‌లో చూపించబడింది.",
+        listen:         "వినండి",
+        ttsBlocked:     "బ్రౌజర్ సమాధానాన్ని స్వయంచాలకంగా చదవనివ్వలేదు. వినడానికి “వినండి” నొక్కండి, లేదా స్క్రీన్‌పై చదవండి.",
+        voicesLoading:  "ఈ బ్రౌజర్‌లో వాయిస్‌లు ఇంకా లోడ్ కాలేదు. మళ్లీ ప్రయత్నించడానికి “వినండి” నొక్కండి, లేదా సమాధానాన్ని స్క్రీన్‌పై చదవండి.",
+        ttsFailed:      "ఈ బ్రౌజర్‌లో సమాధానాన్ని చదివి వినిపించలేకపోయాము. దయచేసి స్క్రీన్‌పై చదవండి.",
         serverError: "సర్వర్‌ను సంప్రదించడం సాధ్యం కాలేదు.",
         offlineAnswer: "ఆఫ్‌లైన్ సమాధానం",
         savedAnswer: "సేవ్ చేసిన సమాధానం",
@@ -101,6 +117,10 @@ const I18N = {
         noCache: "इंटरनेट नाही आणि सहेजलेली माहिती नाही.",
         noVoice:        "या ब्राउझरमध्ये या भाषेसाठी आवाज उपलब्ध नाही, म्हणून उत्तर वाचून दाखवले नाही.",
         notTranslated:  "उत्तराचे तुमच्या भाषेत भाषांतर करता आले नाही, म्हणून ते इंग्रजीत दाखवले आहे.",
+        listen:         "ऐका",
+        ttsBlocked:     "ब्राउझरने उत्तर आपोआप वाचून दाखवू दिले नाही. ऐकण्यासाठी “ऐका” दाबा, किंवा स्क्रीनवर वाचा.",
+        voicesLoading:  "या ब्राउझरमध्ये आवाज अजून लोड झालेले नाहीत. पुन्हा प्रयत्न करण्यासाठी “ऐका” दाबा, किंवा उत्तर स्क्रीनवर वाचा.",
+        ttsFailed:      "या ब्राउझरमध्ये उत्तर वाचून दाखवता आले नाही. कृपया ते स्क्रीनवर वाचा.",
         serverError: "सर्व्हरशी संपर्क होऊ शकला नाही.",
         offlineAnswer: "ऑफलाइन उत्तर",
         savedAnswer: "जतन केलेले उत्तर",
@@ -123,6 +143,10 @@ const I18N = {
         noCache: "இணையம் இல்லை மற்றும் சேமிக்கப்பட்ட தகவல் இல்லை.",
         noVoice:        "இந்த உலாவியில் இந்த மொழிக்கான குரல் இல்லை, எனவே பதில் வாசிக்கப்படவில்லை.",
         notTranslated:  "பதிலை உங்கள் மொழியில் மொழிபெயர்க்க முடியவில்லை, எனவே ஆங்கிலத்தில் காட்டப்படுகிறது.",
+        listen:         "கேளுங்கள்",
+        ttsBlocked:     "உலாவி பதிலைத் தானாக வாசிக்க அனுமதிக்கவில்லை. கேட்க “கேளுங்கள்” என்பதை அழுத்தவும், அல்லது திரையில் படிக்கவும்.",
+        voicesLoading:  "இந்த உலாவியில் குரல்கள் இன்னும் ஏற்றப்படவில்லை. மீண்டும் முயற்சிக்க “கேளுங்கள்” என்பதை அழுத்தவும், அல்லது பதிலைத் திரையில் படிக்கவும்.",
+        ttsFailed:      "இந்த உலாவியில் பதிலை வாசிக்க முடியவில்லை. தயவுசெய்து திரையில் படிக்கவும்.",
         serverError: "சர்வரை தொடர்பு கொள்ள இயலவில்லை.",
         offlineAnswer: "ஆஃப்லைன் பதில்",
         savedAnswer: "சேமிக்கப்பட்ட பதில்",
@@ -145,6 +169,10 @@ const I18N = {
         noCache: "ઇન્ટરનેટ નથી અને સાચવેલી માહિતી નથી.",
         noVoice:        "આ બ્રાઉઝરમાં આ ભાષા માટે અવાજ ઉપલબ્ધ નથી, તેથી જવાબ વાંચી સંભળાવ્યો નથી.",
         notTranslated:  "જવાબનો તમારી ભાષામાં અનુવાદ થઈ શક્યો નથી, તેથી તે અંગ્રેજીમાં બતાવવામાં આવ્યો છે.",
+        listen:         "સાંભળો",
+        ttsBlocked:     "બ્રાઉઝરે જવાબ આપમેળે વાંચી સંભળાવવા દીધો નહીં. સાંભળવા “સાંભળો” દબાવો, અથવા સ્ક્રીન પર વાંચો.",
+        voicesLoading:  "આ બ્રાઉઝરમાં અવાજો હજી લોડ થયા નથી. ફરી પ્રયાસ કરવા “સાંભળો” દબાવો, અથવા જવાબ સ્ક્રીન પર વાંચો.",
+        ttsFailed:      "આ બ્રાઉઝરમાં જવાબ વાંચી સંભળાવી શકાયો નથી. કૃપા કરીને સ્ક્રીન પર વાંચો.",
         serverError: "સર્વર સાથે સંપર્ક કરી શકાયો નહીં.",
         offlineAnswer: "ઑફલાઇન જવાબ",
         savedAnswer: "સાચવેલો જવાબ",
@@ -167,6 +195,10 @@ const I18N = {
         noCache: "ಇಂಟರ್ನೆಟ್ ಇಲ್ಲ ಮತ್ತು ಉಳಿಸಿದ ಮಾಹಿತಿ ಇಲ್ಲ.",
         noVoice:        "ಈ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಈ ಭಾಷೆಗೆ ಧ್ವನಿ ಲಭ್ಯವಿಲ್ಲ, ಆದ್ದರಿಂದ ಉತ್ತರವನ್ನು ಓದಿ ಹೇಳಿಲ್ಲ.",
         notTranslated:  "ಉತ್ತರವನ್ನು ನಿಮ್ಮ ಭಾಷೆಗೆ ಅನುವಾದಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ, ಆದ್ದರಿಂದ ಅದನ್ನು ಇಂಗ್ಲಿಷ್‌ನಲ್ಲಿ ತೋರಿಸಲಾಗಿದೆ.",
+        listen:         "ಆಲಿಸಿ",
+        ttsBlocked:     "ಬ್ರೌಸರ್ ಉತ್ತರವನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಓದಲು ಅನುಮತಿಸಲಿಲ್ಲ. ಕೇಳಲು “ಆಲಿಸಿ” ಒತ್ತಿರಿ, ಅಥವಾ ಪರದೆಯ ಮೇಲೆ ಓದಿ.",
+        voicesLoading:  "ಈ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಧ್ವನಿಗಳು ಇನ್ನೂ ಲೋಡ್ ಆಗಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು “ಆಲಿಸಿ” ಒತ್ತಿರಿ, ಅಥವಾ ಉತ್ತರವನ್ನು ಪರದೆಯ ಮೇಲೆ ಓದಿ.",
+        ttsFailed:      "ಈ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಉತ್ತರವನ್ನು ಓದಿ ಹೇಳಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಪರದೆಯ ಮೇಲೆ ಓದಿ.",
         serverError: "ಸರ್ವರ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
         offlineAnswer: "ಆಫ್‌ಲೈನ್ ಉತ್ತರ",
         savedAnswer: "ಉಳಿಸಿದ ಉತ್ತರ",
@@ -189,6 +221,10 @@ const I18N = {
         noCache: "ଇଣ୍ଟର୍ନେଟ୍ ନାହିଁ ଏବଂ ସଞ୍ଚିତ ତଥ୍ୟ ନାହିଁ।",
         noVoice:        "ଏହି ବ୍ରାଉଜରରେ ଏହି ଭାଷା ପାଇଁ ସ୍ୱର ଉପଲବ୍ଧ ନାହିଁ, ତେଣୁ ଉତ୍ତର ପଢ଼ି ଶୁଣାଯାଇ ନାହିଁ।",
         notTranslated:  "ଉତ୍ତରକୁ ଆପଣଙ୍କ ଭାଷାରେ ଅନୁବାଦ କରାଯାଇପାରିଲା ନାହିଁ, ତେଣୁ ଏହାକୁ ଇଂରାଜୀରେ ଦେଖାଯାଇଛି।",
+        listen:         "ଶୁଣନ୍ତୁ",
+        ttsBlocked:     "ବ୍ରାଉଜର ଉତ୍ତରକୁ ସ୍ୱୟଂଚାଳିତ ଭାବେ ପଢ଼ି ଶୁଣାଇବାକୁ ଦେଲା ନାହିଁ। ଶୁଣିବାକୁ “ଶୁଣନ୍ତୁ” ଦବାନ୍ତୁ, କିମ୍ବା ସ୍କ୍ରିନରେ ପଢ଼ନ୍ତୁ।",
+        voicesLoading:  "ଏହି ବ୍ରାଉଜରରେ ସ୍ୱର ଏପର୍ଯ୍ୟନ୍ତ ଲୋଡ୍ ହୋଇନାହିଁ। ପୁଣି ଚେଷ୍ଟା କରିବାକୁ “ଶୁଣନ୍ତୁ” ଦବାନ୍ତୁ, କିମ୍ବା ଉତ୍ତରକୁ ସ୍କ୍ରିନରେ ପଢ଼ନ୍ତୁ।",
+        ttsFailed:      "ଏହି ବ୍ରାଉଜରରେ ଉତ୍ତର ପଢ଼ି ଶୁଣାଯାଇପାରିଲା ନାହିଁ। ଦୟାକରି ସ୍କ୍ରିନରେ ପଢ଼ନ୍ତୁ।",
         serverError: "ସର୍ଭର ସହ ଯୋଗାଯୋଗ ହୋଇପାରିଲା ନାହିଁ।",
         offlineAnswer: "ଅଫଲାଇନ୍ ଉତ୍ତର",
         savedAnswer: "ସଞ୍ଚିତ ଉତ୍ତର",
@@ -211,6 +247,10 @@ const I18N = {
         noCache: "ഇന്റർനെറ്റ് ഇല്ല, സേവ് ചെയ്ത വിവരവും ഇല്ല.",
         noVoice:        "ഈ ബ്രൗസറിൽ ഈ ഭാഷയ്ക്കുള്ള ശബ്ദം ലഭ്യമല്ല, അതിനാൽ ഉത്തരം വായിച്ചുകേൾപ്പിച്ചില്ല.",
         notTranslated:  "ഉത്തരം നിങ്ങളുടെ ഭാഷയിലേക്ക് വിവർത്തനം ചെയ്യാനായില്ല, അതിനാൽ ഇംഗ്ലീഷിൽ കാണിക്കുന്നു.",
+        listen:         "കേൾക്കുക",
+        ttsBlocked:     "ഉത്തരം സ്വയം വായിക്കാൻ ബ്രൗസർ അനുവദിച്ചില്ല. കേൾക്കാൻ “കേൾക്കുക” അമർത്തുക, അല്ലെങ്കിൽ സ്ക്രീനിൽ വായിക്കുക.",
+        voicesLoading:  "ഈ ബ്രൗസറിൽ ശബ്ദങ്ങൾ ഇതുവരെ ലോഡ് ചെയ്തിട്ടില്ല. വീണ്ടും ശ്രമിക്കാൻ “കേൾക്കുക” അമർത്തുക, അല്ലെങ്കിൽ ഉത്തരം സ്ക്രീനിൽ വായിക്കുക.",
+        ttsFailed:      "ഈ ബ്രൗസറിൽ ഉത്തരം വായിച്ചുകേൾപ്പിക്കാനായില്ല. ദയവായി സ്ക്രീനിൽ വായിക്കുക.",
         serverError: "സെർവറുമായി ബന്ധപ്പെടാൻ കഴിയുന്നില്ല.",
         offlineAnswer: "ഓഫ്‌ലൈൻ ഉത്തരം",
         savedAnswer: "സേവ് ചെയ്ത ഉത്തരം",
@@ -233,6 +273,10 @@ const I18N = {
         noCache: "ਇੰਟਰਨੈੱਟ ਨਹੀਂ ਅਤੇ ਸੰਭਾਲੀ ਜਾਣਕਾਰੀ ਨਹੀਂ।",
         noVoice:        "ਇਸ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਇਸ ਭਾਸ਼ਾ ਲਈ ਆਵਾਜ਼ ਉਪਲਬਧ ਨਹੀਂ ਹੈ, ਇਸ ਲਈ ਜਵਾਬ ਪੜ੍ਹ ਕੇ ਨਹੀਂ ਸੁਣਾਇਆ ਗਿਆ।",
         notTranslated:  "ਜਵਾਬ ਦਾ ਤੁਹਾਡੀ ਭਾਸ਼ਾ ਵਿੱਚ ਅਨੁਵਾਦ ਨਹੀਂ ਹੋ ਸਕਿਆ, ਇਸ ਲਈ ਇਹ ਅੰਗਰੇਜ਼ੀ ਵਿੱਚ ਦਿਖਾਇਆ ਗਿਆ ਹੈ।",
+        listen:         "ਸੁਣੋ",
+        ttsBlocked:     "ਬ੍ਰਾਊਜ਼ਰ ਨੇ ਜਵਾਬ ਆਪਣੇ ਆਪ ਪੜ੍ਹ ਕੇ ਸੁਣਾਉਣ ਨਹੀਂ ਦਿੱਤਾ। ਸੁਣਨ ਲਈ “ਸੁਣੋ” ਦਬਾਓ, ਜਾਂ ਸਕ੍ਰੀਨ 'ਤੇ ਪੜ੍ਹੋ।",
+        voicesLoading:  "ਇਸ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਆਵਾਜ਼ਾਂ ਅਜੇ ਲੋਡ ਨਹੀਂ ਹੋਈਆਂ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰਨ ਲਈ “ਸੁਣੋ” ਦਬਾਓ, ਜਾਂ ਜਵਾਬ ਸਕ੍ਰੀਨ 'ਤੇ ਪੜ੍ਹੋ।",
+        ttsFailed:      "ਇਸ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਜਵਾਬ ਪੜ੍ਹ ਕੇ ਨਹੀਂ ਸੁਣਾਇਆ ਜਾ ਸਕਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਸਕ੍ਰੀਨ 'ਤੇ ਪੜ੍ਹੋ।",
         serverError: "ਸਰਵਰ ਨਾਲ ਸੰਪਰਕ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
         offlineAnswer: "ਔਫਲਾਈਨ ਜਵਾਬ",
         savedAnswer: "ਸੰਭਾਲਿਆ ਹੋਇਆ ਜਵਾਬ",
@@ -483,6 +527,7 @@ function generateOfflineResponse(query, schemes) {
             ? `It seems you are asking about agricultural schemes. I found matching information for: ${schemes.map(s => s.name).join(", ")}.`
             : "I am currently offline and don't have this information saved. I can help with general farming queries or your profile details.",
         recommended_schemes: schemes,
+        response_language: "en",          // this offline text is English: label it so (shown/spoken as English, with a notice)
         doc_links: [],
         nearest_centers: [],
     };
@@ -618,6 +663,45 @@ function renderMarkdown(str) {
     return html;
 }
 
+// Is the displayed answer in a different language than the one the user selected? The backend says so explicitly
+// (translation_status / response_language); the script check covers cached answers stored before those fields existed.
+function answerNotInSelectedLanguage(data, selectedLang) {
+    if (!data || !data.answer || !selectedLang || selectedLang === "auto") return false;
+    if (data.translation_status === "failed") return true;
+    if (data.response_language && data.response_language !== selectedLang) return true;
+    const shown = window.SaarthiTTS ? window.SaarthiTTS.effectiveAnswerLanguage(data.answer, data.response_language || selectedLang) : null;
+    return !!(shown && shown.lang && shown.lang !== selectedLang);
+}
+
+function noticeHtml(msg, icon) {
+    return `<div class="ml-12 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-[13px] text-amber-700 flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">${icon}</span>${msg}</div>`;
+}
+
+// "Listen" button under every answer: replays THAT answer (a tap also satisfies the browser's autoplay rule).
+const spokenAnswers = {};
+let spokenAnswerSeq = 0;
+function listenButtonHtml(data) {
+    if (!data || !data.answer || !window.speechSynthesis) return "";
+    const id = "ans" + (++spokenAnswerSeq);
+    spokenAnswers[id] = { answer: data.answer, response_language: data.response_language || null };
+    return `<button type="button" class="listen-btn mt-1 self-start inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline" data-answer-id="${id}" onclick="window.speakAnswerById && window.speakAnswerById('${id}')" aria-label="${escapeHtml(t("listen"))}"><span class="material-symbols-outlined text-[16px]">volume_up</span>${escapeHtml(t("listen"))}</button>`;
+}
+window.speakAnswerById = function (id) {
+    const data = spokenAnswers[id];
+    if (!data || !window.SaarthiTTS) return Promise.resolve({ spoken: false, reason: "unknown_answer" });
+    return window.SaarthiTTS.speakResponse(data, getLang());
+};
+
+// voice.js reports why an answer was NOT read aloud; show it next to the answer, not only in the status line.
+let lastSpeechNoticeKey = "";
+window.onSaarthiSpeechNotice = function (notice) {
+    if (!notice || !notice.message) return;
+    const key = notice.reason + "|" + spokenAnswerSeq;
+    if (key === lastSpeechNoticeKey) return;              // one notice per answer and reason
+    lastSpeechNoticeKey = key;
+    addRawHtmlToChat(noticeHtml(escapeHtml(notice.message), "volume_off"), "bot");
+};
+
 function displayResponse(data, isCached, isOfflineGenerated) {
     const badgeText = isOfflineGenerated ? t("offlineAnswer") : (isCached ? t("savedAnswer") : "");
     const badge = badgeText ? `<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 mt-2"><span class="material-symbols-outlined text-[13px]">${isOfflineGenerated ? 'wifi_off' : 'bookmark'}</span>${badgeText}</span>` : "";
@@ -630,9 +714,15 @@ function displayResponse(data, isCached, isOfflineGenerated) {
             <div class="flex flex-col gap-1 max-w-[85%]">
                 <div class="text-[16px] leading-relaxed text-slate-700 whitespace-pre-line">${renderMarkdown(data.answer)}</div>
                 ${badge}
+                ${listenButtonHtml(data)}
             </div>
         </div>
     `;
+
+    if (data.answer && answerNotInSelectedLanguage(data, getLang())) {
+        // Say so instead of silently showing English when another language was selected.
+        htmlContent += noticeHtml(escapeHtml(t("notTranslated")), "translate");
+    }
 
     if (data.answer) {
         // Speak the displayed answer in the language it is written in (never the romanized transliteration).

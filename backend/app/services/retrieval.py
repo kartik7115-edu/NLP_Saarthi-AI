@@ -43,6 +43,8 @@ W_ACTIVITY, W_DOMAIN = 35.0, 30.0
 W_INTENT_FIELD, W_CORE_PRIOR = 10.0, 8.0
 W_LAND_EXCEEDS, W_PROFILE_STATE_MISMATCH, W_INACTIVE = -40.0, -20.0, -50.0
 LEX_CAP, LEX_QUALIFY = 30.0, 6.0
+MAX_STATE_EXAMPLES = 3
+STATE_SENSITIVE_INTENTS = {"eligibility_check", "scheme_search", "benefits_query", "application_process"}
 
 _STOP = set("""a an the this that these those it its is are am was were be been being do does did have has had
 i me my we our you your he she they them their what which who whom whose how when where why can could will would
@@ -134,6 +136,8 @@ class RetrievalResult:
     candidates: List[ScoredScheme] = field(default_factory=list)    # every scored scheme (debug)
     notes: List[str] = field(default_factory=list)
     coverage: Dict[str, Any] = field(default_factory=dict)
+    # relevant STATE schemes held back because the user's state is unknown (examples only, never recommendations)
+    state_examples: List[ScoredScheme] = field(default_factory=list)
 
     @property
     def schemes(self) -> List[Dict[str, Any]]:
@@ -347,6 +351,14 @@ def retrieve(query: str, schemes: List[Dict[str, Any]], profile: Optional[Dict[s
             tier = "4_textual_relevance"
         if reason is None and not qualifiers:
             reason = "no_relevance_signal"
+        # A state scheme is only a match when the user's state is known and is one of the scheme's states.
+        # State unknown -> never a (personalised) match; the relevant ones are offered as labelled examples instead.
+        # Profile state for another state -> excluded, as a query state would be (the profile is still lower priority).
+        if reason is None and not sig["exact_scheme_match"] and not is_central:
+            if not u.state:
+                reason = "state_unknown"
+            elif u.state_source == "profile" and u.state not in states:
+                reason = "state_mismatch_profile"
 
         sig["qualifiers"] = qualifiers
         cands.append(ScoredScheme(scheme=s, score=score, tier=tier, signals=sig, reason=reason,
@@ -384,6 +396,8 @@ def retrieve(query: str, schemes: List[Dict[str, Any]], profile: Optional[Dict[s
             c.reason = "below_top_k"
 
     result = RetrievalResult(understanding=u, results=selected, candidates=cands)
+    if not u.state and not has_exact:
+        result.state_examples = [c for c in cands if c.reason == "state_unknown"][:MAX_STATE_EXAMPLES]
     _annotate(result)
     return result
 
@@ -418,5 +432,15 @@ def _annotate(r: RetrievalResult) -> None:
                      f"(or to notified crops) and may still cover {u.crop} farmers.")
         if u.state and u.state_source == "query" and sel and not r.coverage["state_specific_match"]:
             n.append(f"No {u.state}-specific scheme was found for this question; the schemes shown are central schemes that apply in {u.state}.")
+        if not u.state and (r.state_examples or u.intent in STATE_SENSITIVE_INTENTS):
+            msg = ("State not provided: only central schemes (they apply in every state) are listed as matches; "
+                   "eligibility can also depend on state rules.")
+            if r.state_examples:
+                ex = "; ".join(f"{c.scheme.get('name')} - only in {', '.join(x for x in (c.scheme.get('states') or []) if x != 'ALL')}"
+                               for c in r.state_examples)
+                msg += (" Some states run their own schemes (EXAMPLES ONLY, not recommendations; each applies only in the "
+                        f"state named): {ex}.")
+            msg += " Please share your state to check whether a state scheme applies."
+            n.append(msg)
         if not sel:
             n.append("No relevant scheme was found in the knowledge base for this question.")

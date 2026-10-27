@@ -51,18 +51,19 @@ def _make_client():
 
 
 def chat(messages: List[Dict[str, str]], *, temperature: float = 0.1, max_tokens: int = 700,
-         model: Optional[str] = None) -> str:
-    """Send a chat completion request and return the answer text. Raises GroqError on any failure."""
+         model: Optional[str] = None, extra_body: Optional[Dict[str, Any]] = None) -> str:
+    """Send a chat completion request and return the answer text. Raises GroqError on any failure.
+
+    extra_body: optional provider-specific request fields (only sent when given, so existing calls are unchanged).
+    """
     if not is_configured():
         raise GroqError("groq_not_configured")
     try:
         client = _make_client()
-        response = client.chat.completions.create(
-            model=model or model_name(),
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        kwargs = dict(model=model or model_name(), messages=messages, temperature=temperature, max_tokens=max_tokens)
+        if extra_body:
+            kwargs["extra_body"] = extra_body
+        response = client.chat.completions.create(**kwargs)
         text = (response.choices[0].message.content or "").strip()
     except Exception as e:  # noqa: BLE001 - every provider/network error means "use the fallback"
         status = getattr(e, "status_code", None)

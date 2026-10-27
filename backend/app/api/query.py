@@ -1,13 +1,20 @@
 import asyncio
 import logging
+import re
 import time
 from collections import defaultdict
 from fastapi import APIRouter, HTTPException, Request, Response
 from app.schemas import QueryRequest, QueryResponse
 from app.services.rag_engine import rag_engine
 from app.services.intent_detection import detect_intent, stem, tokenize
-from app.services.answer_localizer import localize_answer, LocalizationResult
-from app.services.language_utils import is_text_in_language, normalize_language, source_language_for_query
+from app.config import settings
+from app.services import llm_translator
+from app.services.answer_localizer import localize_with_fallbacks, LocalizationResult
+from app.services.language_utils import (
+    LANGUAGE_SCRIPT, detect_devanagari_language, dominant_script, is_text_in_language, normalize_language,
+    source_language_for_query,
+)
+from app.services.multilingual_query import english_keywords
 from app.services.recommendation_engine import recommend_schemes
 from app.services.translator import translator_service
 from app.services.brightdata_service import search_schemes as brightdata_search
@@ -130,6 +137,79 @@ async def _run_transliterate(text, language):
         return None
 
 
+def _translation_providers():
+    """Ordered (name, translate_fn) list for localizing answers. Every fn RAISES on failure.
+
+    "machine" = translator_service (Azure Translator when a key is configured, otherwise the free Google endpoint);
+    "groq"    = the configured Groq model (only when Groq is configured). Order: settings.translation_provider_order.
+    """
+    out = []
+    for name in [p.strip().lower() for p in (settings.translation_provider_order or "machine,groq").split(",") if p.strip()]:
+        if name == "machine":
+            out.append(("machine", translator_service.translate_text_strict))
+        elif name == "groq" and llm_translator.is_available():
+            out.append(("groq", llm_translator.translate_with_groq))
+    return out
+
+
+def _usable_english(candidate, original: str) -> bool:
+    """A question translation is usable for retrieval only if it really is (mostly Latin-script) text, not the input echoed."""
+    return (isinstance(candidate, str) and bool(candidate.strip()) and candidate.strip() != original.strip()
+            and is_text_in_language(candidate, "en"))
+
+
+async def _run_llm_translate(text, source, target):
+    if not llm_translator.is_available():
+        return None
+    try:
+        return await asyncio.to_thread(llm_translator.translate_with_groq, text, source, target)
+    except Exception as e:
+        logger.warning("Groq question translation failed (non-fatal): %s", getattr(e, "code", type(e).__name__))
+        return None
+
+
+def _resolve_auto_language(detected, query: str):
+    """Answer language for language='auto': the detector's result, made safe for Devanagari and unsupported codes."""
+    lang = normalize_language(detected) if isinstance(detected, str) else None
+    script = dominant_script(query)
+    if script == "devanagari" and lang in (None, "auto", "hi", "mr"):
+        # langdetect can return 'ne'/'sa' for Devanagari; Hindi and Marathi are told apart by their words
+        lang = detect_devanagari_language(query) or (lang if lang in ("hi", "mr") else "hi")
+    if lang in (None, "auto") and script not in (None, "latin"):
+        candidates = [l for l, sc in LANGUAGE_SCRIPT.items() if sc == script]
+        if len(candidates) == 1:
+            lang = candidates[0]
+    return lang if lang not in (None, "auto") else "en"
+
+
+_CARD_MARK = "SAARTHICARD{}"
+_CARD_SPLIT = re.compile(r"SAARTHICARD(\d+)")
+
+
+def _localize_cards(descriptions, target_lang, names, providers):
+    """Translate every card description in ONE request per provider (all or nothing). Returns (texts|None, result)."""
+    marks = [_CARD_MARK.format(i) for i in range(len(descriptions))]
+    combined = "\n".join(f"{m} {d}" for m, d in zip(marks, descriptions))
+    res = localize_with_fallbacks(combined, target_lang, list(names) + marks, providers)
+    if res.status != "translated":
+        return None, res
+    pieces = _CARD_SPLIT.split(res.text)
+    out = {}
+    for i in range(1, len(pieces) - 1, 2):
+        out[int(pieces[i])] = pieces[i + 1].strip()
+    if sorted(out) != list(range(len(descriptions))) or not all(out.values()):
+        return None, LocalizationResult(combined, "en", "failed", "card_split_failed", attempts=res.attempts)
+    return [out[i] for i in range(len(descriptions))], res
+
+
+def _state_applicable(rec, state) -> bool:
+    """Central schemes always; a state scheme only when the user's state is known and is the scheme's state."""
+    rec_state = (rec.get("state") or "").strip()
+    if rec.get("type") != "state" and not rec_state:
+        return True
+    return bool(state) and rec_state.lower() == str(state).strip().lower()
+
+
 @router.post("/", response_model=QueryResponse)
 async def handle_query(request: QueryRequest, raw_request: Request, response: Response):
     client_ip = raw_request.client.host if raw_request.client else "unknown"
@@ -144,16 +224,34 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
         answer_lang = "auto"
     if answer_lang == "auto":
         detected = await asyncio.to_thread(translator_service.detect_language, original_query)
-        answer_lang = normalize_language(detected) if isinstance(detected, str) else None
-        if answer_lang in (None, "auto"):
-            answer_lang = "en"
+        answer_lang = _resolve_auto_language(detected, original_query)
     query_lang = source_language_for_query(original_query, answer_lang)
 
+    # --- the QUESTION is made English for retrieval; the original question is kept for the answer language.
     english_query = original_query
+    retrieval_query = original_query
+    query_translation = "not_needed"
+    keywords = ""
     if query_lang != "en":
+        keywords = english_keywords(original_query)
         translated_query = await _run_translate(original_query, query_lang, "en")
-        if isinstance(translated_query, str) and translated_query.strip():
-            english_query = translated_query
+        if _usable_english(translated_query, original_query):
+            english_query, query_translation = translated_query, "machine"
+        else:
+            translated_query = await _run_llm_translate(original_query, query_lang, "en")
+            if _usable_english(translated_query, original_query):
+                english_query, query_translation = translated_query, "groq"
+            else:
+                query_translation = "failed"
+        if query_translation == "failed":
+            # No translation: keep the original words (Devanagari scheme aliases still resolve) plus English keywords,
+            # so the question is not reported as "no information" merely because it is not in English.
+            retrieval_query = (original_query + " " + keywords).strip()
+            logger.warning("Question could not be translated from %s; retrieving with %d English keyword(s)",
+                           query_lang, len(keywords.split()))
+        else:
+            retrieval_query = english_query
+    response.headers["X-Query-Translation"] = query_translation
 
     farmer_profile = {
         "state": request.state or request.location,
@@ -166,7 +264,7 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
 
     retrieval, web_snippets, gov_context = await asyncio.gather(
         _run_rag_search(
-            english_query,
+            retrieval_query,
             user_state=request.state or request.location,
             occupation=request.occupation,
             profile=farmer_profile if farmer_profile else None,
@@ -174,8 +272,15 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
         _run_brightdata_search(english_query),
         _run_gov_enrichment(english_query, crop=request.crop),
     )
+    if not retrieval.schemes and keywords and query_translation != "failed":
+        # the translation was worded differently from the dataset (e.g. "grant" for अनुदान): retry with the keywords
+        retry = await _run_rag_search(english_query + " " + keywords, user_state=request.state or request.location,
+                                      occupation=request.occupation, profile=farmer_profile if farmer_profile else None)
+        if retry.schemes:
+            retrieval = retry
     top_schemes = retrieval.schemes
     intent = retrieval.understanding.intent
+    known_state = retrieval.understanding.state
     logger.debug("Retrieval: %s", retrieval.debug_rows(5))
 
     context = rag_engine._build_rich_context(
@@ -208,25 +313,30 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
 
     # Official scheme names and aliases of the retrieved records must survive translation untouched.
     protected_terms = ["Saarthi.AI"]
-    for s in top_schemes:
+    for s in top_schemes + [c.scheme for c in getattr(retrieval, "state_examples", [])]:
         protected_terms.append(s.get("name", ""))
         protected_terms.extend(s.get("aliases") or [])
 
+    providers = _translation_providers()
     localization = LocalizationResult(answer, answer_result.language, "not_needed")
     if answer and answer_result.language != answer_lang:
-        localization = await asyncio.to_thread(
-            localize_answer, answer, answer_lang, protected_terms, translator_service.translate_text_strict)
+        localization = await asyncio.to_thread(localize_with_fallbacks, answer, answer_lang, protected_terms, providers)
         if localization.status == "failed":
+            # Fallback policy: the English answer, labelled "en", status "failed" (the frontend tells the user).
             logger.warning("Answer could not be translated to %s (%s); returning the English answer labelled 'en'",
-                           answer_lang, localization.reason)
+                           answer_lang, ", ".join(localization.attempts) or localization.reason)
     final_answer = localization.text
     response_language = localization.language          # always the language `final_answer` is really in
 
     response.headers["X-Requested-Language"] = answer_lang
     response.headers["X-Answer-Language"] = response_language
     response.headers["X-Translation-Status"] = localization.status
+    if localization.provider:
+        response.headers["X-Translation-Provider"] = localization.provider
     if localization.reason:
         response.headers["X-Translation-Error"] = localization.reason
+    if localization.attempts:
+        response.headers["X-Translation-Attempts"] = ",".join(localization.attempts)
     if language_note:
         response.headers["X-Language-Note"] = language_note
 
@@ -251,8 +361,9 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
             doc_links_task = _run_doc_link_search(english_query, primary_scheme["name"])
 
     if include_schemes:
-        raw_recommendations = recommend_schemes(request.model_dump())
-        query_stems = {stem(w) for w in tokenize(english_query) if w not in _REC_STOP and stem(w) not in _REC_STOP and len(w) > 3}
+        # Profile-based suggestions never include another state's schemes, nor any state scheme when the state is unknown.
+        raw_recommendations = [r for r in recommend_schemes(request.model_dump()) if _state_applicable(r, known_state)]
+        query_stems = {stem(w) for w in tokenize(retrieval_query) if w not in _REC_STOP and stem(w) not in _REC_STOP and len(w) > 3}
         retrieved_names = {s["name"] for s in top_schemes}
         scored_recs = []
         for rec in raw_recommendations:
@@ -267,12 +378,16 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
             filtered_recs = [r for _, r in scored_recs[:3]]
 
         if answer_lang != "en" and localization.status == "translated" and filtered_recs:
-            async def _localize_card(rec):
-                result = await asyncio.to_thread(
-                    localize_answer, rec["description"], answer_lang, [rec["name"]], translator_service.translate_text_strict)
-                return result.text if result.status == "translated" else rec["description"]
-
-            descriptions = await asyncio.gather(*[_localize_card(rec) for rec in filtered_recs])
+            descs = [rec["description"] or "" for rec in filtered_recs]
+            names = [rec["name"] for rec in filtered_recs] + protected_terms
+            localized, card_result = (None, None)
+            if all(d.strip() for d in descs):
+                localized, card_result = await asyncio.to_thread(_localize_cards, descs, answer_lang, names, providers)
+            response.headers["X-Cards-Translation"] = "translated" if localized else "failed"
+            if not localized:
+                logger.warning("Recommendation cards could not be translated to %s (%s); keeping English descriptions",
+                               answer_lang, ", ".join(card_result.attempts) if card_result else "empty_description")
+            descriptions = localized or descs
             for rec, description in zip(filtered_recs, descriptions):
                 final_recommendations.append({
                     "name": rec["name"],                     # official scheme names are never machine-translated
@@ -336,4 +451,6 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
         response_language=response_language,
         doc_links=doc_links,
         nearest_centers=nearest_centers,
+        requested_language=answer_lang,
+        translation_status=localization.status,
     )

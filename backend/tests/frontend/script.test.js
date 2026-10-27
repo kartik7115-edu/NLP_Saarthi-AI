@@ -175,8 +175,11 @@ test("script.js no longer prefers answer_romanized for speech and uses speakResp
 
 test("service worker cache version was bumped and still precaches script.js and voice.js", () => {
   const sw = fs.readFileSync(path.join(DIST, "sw.js"), "utf8");
-  assert.match(sw, /CACHE_NAME = 'saarthi-v3'/);
+  assert.match(sw, /CACHE_NAME = 'saarthi-v4'/);
   assert.ok(sw.includes("'/script.js'") && sw.includes("'/voice.js'"));
+  // the app's own code is fetched network-first, so an update is used on the very next load (cache only when offline)
+  assert.match(sw, /const NETWORK_FIRST = \[[^\]]*'\/script\.js'[^\]]*'\/voice\.js'/);
+  assert.ok(sw.includes("respondWith(networkFirst(event.request))"));
 });
 
 test("index.html loads voice.js and script.js", () => {

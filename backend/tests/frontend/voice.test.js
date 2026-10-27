@@ -106,8 +106,11 @@ test("missing voice: nothing is spoken, the user is told, and English speech is 
 test("no voices at all and a non-English answer: explicit skip after the wait, never a silent default-voice read", async () => {
   const env = boot({ selectedLang: "ta", voices: [] });
   const result = await env.win.SaarthiTTS.speakResponse({ answer: SAMPLE.ta, response_language: "ta" }, "ta");
-  assert.equal(result.reason, "no_voice");
+  // An empty voice list (after waiting twice) only proves the voices did not load, not that no Tamil voice exists:
+  // the user is told the voices have not loaded and can retry with "Listen" - nothing is read by a default voice.
+  assert.equal(result.reason, "voices_not_loaded");
   assert.equal(env.spoken.length, 0);
+  assert.ok(env.statusMessages.some((m) => m && /voices|Listen/i.test(m) || m === vm.runInContext("I18N.ta.voicesLoading", env.ctx)));
 });
 
 test("English with no installed English voice may use the browser default (it is English)", async () => {

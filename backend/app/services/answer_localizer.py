@@ -12,9 +12,12 @@ reported explicitly and is never labelled as a successful localized answer.
 """
 import re
 from dataclasses import dataclass
-from typing import Callable, Iterable, List, Optional, Tuple
+from dataclasses import field
+from typing import Callable, Iterable, List, Optional, Sequence, Tuple
 
-from app.services.language_utils import MIN_NATIVE_RATIO, is_text_in_language, letter_counts, script_ratio, LANGUAGE_SCRIPT
+from app.services.language_utils import (
+    MIN_NATIVE_RATIO, is_text_in_language, letter_counts, script_ratio, LANGUAGE_SCRIPT, wrong_devanagari_language,
+)
 
 TOKEN_FMT = "QZ{}QZ"
 _TOKEN_RE = re.compile(r"QZ\s*(\d+)\s*QZ", re.I)
@@ -36,6 +39,8 @@ class LocalizationResult:
     language: str                # language `text` is actually written in
     status: str                  # "not_needed" | "translated" | "failed"
     reason: Optional[str] = None  # short safe failure code when status == "failed"
+    provider: Optional[str] = None                       # which provider produced an accepted translation
+    attempts: List[str] = field(default_factory=list)    # "<provider>:<reason>" for every rejected attempt
 
 
 def _latin_terms(terms: Iterable[str]) -> List[str]:
@@ -112,6 +117,37 @@ def localize_answer(english_text: str, target_lang: str, terms: Iterable[str],
     counts = letter_counts(prose)
     if sum(counts.values()) >= 8 and script_ratio(prose, LANGUAGE_SCRIPT[target_lang]) < MIN_NATIVE_RATIO:
         return LocalizationResult(english_text, "en", "failed", "result_not_in_target_language")
+    # Hindi and Marathi share Devanagari: the script check above cannot tell them apart, so check the words too.
+    if wrong_devanagari_language(prose, target_lang):
+        return LocalizationResult(english_text, "en", "failed", "result_in_wrong_language")
     if restored.strip() == english_text.strip():
         return LocalizationResult(english_text, "en", "failed", "provider_returned_input_unchanged")
     return LocalizationResult(restored, target_lang, "translated")
+
+
+TranslateFn = Callable[[str, str, str], str]
+
+
+def localize_with_fallbacks(english_text: str, target_lang: str, terms: Iterable[str],
+                            providers: Sequence[Tuple[str, TranslateFn]]) -> LocalizationResult:
+    """Try each (name, translate_fn) in order; the first translation that passes every check in localize_answer wins.
+
+    Fallback policy when every provider fails: the ENGLISH text is returned with language="en", status="failed",
+    reason = the last failure and `attempts` listing every provider's failure. It is never labelled as localized.
+    """
+    terms = list(terms or [])
+    if not english_text or target_lang == "en":
+        return LocalizationResult(english_text or "", "en", "not_needed")
+    attempts: List[str] = []
+    last: Optional[LocalizationResult] = None
+    for name, fn in providers:
+        result = localize_answer(english_text, target_lang, terms, fn)
+        if result.status == "translated":
+            result.provider, result.attempts = name, attempts
+            return result
+        attempts.append(f"{name}:{result.reason}")
+        last = result
+    if last is None:
+        return LocalizationResult(english_text, "en", "failed", "no_translation_provider", attempts=attempts)
+    last.attempts = attempts
+    return last

@@ -106,7 +106,9 @@ def test_hindi_with_latin_scheme_names_is_still_hindi():
     ("What documents are required for PM-KISAN?", "hi", "en"),        # English question, Hindi selected: not "from Hindi"
     ("PM-KISAN ke bare mein batao", "hi", "en"),                      # romanized Hindi: Latin script
     ("पीएम किसान के दस्तावेज़", "hi", "hi"),
-    ("पीएम किसान के दस्तावेज़", "en", "auto"),                         # Hindi typed while English is selected
+    ("पीएम किसान के दस्तावेज़", "en", "hi"),                           # Hindi typed while English is selected: identified as Hindi
+    ("पीएम किसान योजनेसाठी कोणती कागदपत्रे लागतात आणि अर्ज कसा करावा?", "hi", "mr"),  # Marathi typed while Hindi is selected
+    ("पीएम किसान", "en", "auto"),                                     # too short to tell Hindi from Marathi: provider detects
     ("பிஎம் கிசான் ஆவணங்கள்", "hi", "auto"),                           # script differs from the selected language
     ("", "hi", "en"),
 ])
@@ -332,7 +334,8 @@ def test_hindi_question_with_english_selected_is_translated_for_retrieval_but_an
     t = FakeTranslator(detect="en")
     t.english_for = {"पीएम किसान के लिए कौन से दस्तावेज चाहिए": QUERY}
     r, t, _ = run(query="पीएम किसान के लिए कौन से दस्तावेज चाहिए", language="en", translator=t)
-    assert t.kinds("legacy")[0][2:] == ("auto", "en") and r.json()["response_language"] == "en" and not t.kinds("strict")
+    # the question is identified as Hindi (lexically - the script is shared with Marathi) and translated from Hindi
+    assert t.kinds("legacy")[0][2:] == ("hi", "en") and r.json()["response_language"] == "en" and not t.kinds("strict")
     assert r.json()["intent"] == "document_requirements"
 
 

@@ -46,3 +46,7 @@ class QueryResponse(BaseModel):
     response_language: str = "en"
     doc_links: List[DocLink] = []
     nearest_centers: List[HelpCenter] = []
+    # Added in Stage 5 repair (optional, backwards compatible): the language the user asked for, and whether the answer
+    # was translated into it ("not_needed" | "translated" | "failed"). response_language stays the language of `answer`.
+    requested_language: Optional[str] = None
+    translation_status: Optional[str] = None

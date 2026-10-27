@@ -1,4 +1,4 @@
-const CACHE_NAME = 'saarthi-v3';   // bumped in Stage 5: forces browsers to drop the cached (buggy) script.js / voice.js
+const CACHE_NAME = 'saarthi-v4';   // Stage 5 repair: network-first app shell, so a deployed fix is never hidden by an old cached script
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -12,6 +12,10 @@ const APP_SHELL = [
   'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
 ];
+// The page and its own code must always be the deployed version when the network is available. Serving these
+// cache-first (the old behaviour) ran the PREVIOUS script.js / voice.js for a whole page load after every update,
+// which is how an already-fixed speech or language bug could keep appearing.
+const NETWORK_FIRST = ['/', '/index.html', '/script.js', '/voice.js', '/style.css', '/manifest.json', '/sw.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -45,6 +49,18 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+function networkFirst(request) {
+  return fetch(request, { cache: 'no-cache' }).then(response => {
+    if (response && response.status === 200) {
+      const clone = response.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+    }
+    return response;
+  }).catch(() =>
+    caches.match(request).then(cached => cached || (request.mode === 'navigate' ? caches.match('/index.html') : new Response('', { status: 408 })))
+  );
+}
+
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
@@ -57,6 +73,12 @@ self.addEventListener('fetch', event => {
         });
       })
     );
+    return;
+  }
+
+  if (event.request.method === 'GET' && url.origin === self.location.origin &&
+      (event.request.mode === 'navigate' || NETWORK_FIRST.includes(url.pathname))) {
+    event.respondWith(networkFirst(event.request));
     return;
   }
 

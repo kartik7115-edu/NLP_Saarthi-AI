@@ -94,6 +94,33 @@ function ttsLetterCounts(text) {
     return counts;
 }
 
+// Hindi and Marathi share Devanagari, so the script alone cannot say which one a text is in. Frequent words that
+// occur in only one of the two languages decide (mirrors backend language_utils.detect_devanagari_language).
+const TTS_HI_MARKERS = new Set("है हैं था थे थी के में और लिए नहीं यह वह से को पर हूँ हूं आप आपको आपके सकते सकता सकती चाहिए जाता जाती जाते गया गई भी कौन क्या कैसे अगर लेकिन".split(" "));
+const TTS_MR_MARKERS = new Set("आहे आहेत आणि नाही मध्ये साठी तुम्ही तुमच्या तुम्हाला तुमचे तुमची आपण करा करू शकता शकतो शकते किंवा असे असेल होते केले जाते मिळते मिळेल मिळतात पण कसे काय कोणत्या कोणते".split(" "));
+const TTS_MR_SUFFIXES = ["च्या", "साठी", "मध्ये", "ांना", "ांची", "ांचे", "ाचा", "ाची", "ाचे", "ाला"];
+
+function guessDevanagariLanguage(text) {
+    let hi = 0, mr = 0;
+    for (const w of String(text || "").match(/[\u0900-\u097F]+/g) || []) {
+        if (TTS_HI_MARKERS.has(w) || (w.length > 3 && w.endsWith("ों"))) hi++;
+        if (TTS_MR_MARKERS.has(w) || (w.length > 4 && TTS_MR_SUFFIXES.some(sfx => w.endsWith(sfx)))) mr++;
+    }
+    if (mr >= 2 && mr >= 2 * Math.max(hi, 1)) return "mr";
+    if (hi > mr) return "hi";
+    if (mr > hi) return "mr";
+    return null;
+}
+
+// Share of the letters of `text` written in the script of `lang` (0..1).
+function scriptShare(text, lang) {
+    const resolved = resolveSpeechLang(lang);
+    if (!resolved) return 0;
+    const counts = ttsLetterCounts(text);
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    return total ? (counts[TTS_LANG_SCRIPT[resolved.short]] || 0) / total : 0;
+}
+
 // What language is `text` really in, given the language it is labelled with?
 function effectiveAnswerLanguage(text, claimedLang) {
     const counts = ttsLetterCounts(text);
@@ -101,7 +128,8 @@ function effectiveAnswerLanguage(text, claimedLang) {
     const claimed = resolveSpeechLang(claimedLang);
     if (!total) return { lang: claimed ? claimed.short : null, mismatch: false, claimed: claimed ? claimed.short : null };
     const dominant = Object.keys(counts).reduce((a, b) => (counts[a] >= counts[b] ? a : b));
-    const fromScript = Object.keys(TTS_LANG_SCRIPT).find(l => TTS_LANG_SCRIPT[l] === dominant) || null;
+    let fromScript = Object.keys(TTS_LANG_SCRIPT).find(l => TTS_LANG_SCRIPT[l] === dominant) || null;
+    if (dominant === "devanagari") fromScript = guessDevanagariLanguage(text) || "hi";   // never "Marathi = Hindi" by script
     if (!claimed) return { lang: fromScript, mismatch: false, claimed: null };
     if (claimed.short === "en") return { lang: "en", mismatch: false, claimed: "en" };
     const share = (counts[TTS_LANG_SCRIPT[claimed.short]] || 0) / total;
@@ -194,7 +222,9 @@ function planSpeech(text, claimedLang, voices) {
     if (!resolved) return { action: "skip", reason: "unsupported_language", claimed: eff.claimed };
     const voice = pickVoice(voices, resolved.short);
     if (!voice && resolved.short !== "en") {
-        return { action: "skip", reason: "no_voice", lang: resolved.short, bcp: resolved.bcp, mismatch: eff.mismatch };
+        // An empty voice list means the browser has not loaded its voices yet - that is not "no voice for this language".
+        const reason = (voices && voices.length) ? "no_voice" : "voices_not_loaded";
+        return { action: "skip", reason: reason, lang: resolved.short, bcp: resolved.bcp, mismatch: eff.mismatch };
     }
     return {
         action: "speak", lang: resolved.short, bcp: resolved.bcp, voice: voice, text: clean,
@@ -207,20 +237,39 @@ function ttsMessage(key, fallback) {
     return fallback;
 }
 
-function notifyNoVoice() {
+const TTS_NOTICES = {
+    no_voice: ["noVoice", "No voice for this language is available in this browser, so the answer was not read aloud. Please read it on screen."],
+    voices_not_loaded: ["voicesLoading", "This browser has not loaded its voices yet. Tap \u201cListen\u201d to try again, or read the answer on screen."],
+    blocked: ["ttsBlocked", "The browser did not allow the answer to be read aloud automatically. Tap \u201cListen\u201d to hear it, or read it on screen."],
+    failed: ["ttsFailed", "The answer could not be read aloud in this browser. Please read it on screen."],
+};
+let lastSpeechNotice = null;          // {reason, message, lang} of the last speech problem (null after a successful start)
+
+// Tell the user why the answer is NOT being read aloud (status line + an optional page hook for an inline notice).
+function notifySpeechProblem(reason, lang) {
+    const entry = TTS_NOTICES[reason] || TTS_NOTICES.failed;
+    const message = ttsMessage(entry[0], entry[1]);
+    lastSpeechNotice = { reason: reason, message: message, lang: lang || null };
+    if (typeof window.onSaarthiSpeechNotice === "function") {
+        try { window.onSaarthiSpeechNotice(lastSpeechNotice); } catch (e) { /* page hook must not break speech */ }
+    }
     if (window.showStatus) {
-        window.showStatus(ttsMessage("noVoice", "No voice for this language is available in this browser, so the answer was not read aloud."));
+        window.showStatus(message);
         setTimeout(() => { if (window.showStatus) window.showStatus(""); }, 7000);
     }
 }
 
-function startSpeaking(plan) {
+function notifyNoVoice() { notifySpeechProblem("no_voice"); }      // kept for compatibility
+
+function startSpeaking(plan, requestId) {
     const chunks = splitTextIntoChunks(plan.text, 180);
-    speechQueue = chunks.map(chunk => ({ text: chunk, bcp: plan.bcp, voice: plan.voice }));
+    speechQueue = chunks.map(chunk => ({ text: chunk, bcp: plan.bcp, voice: plan.voice, lang: plan.lang, requestId: requestId }));
     speakNextChunk();
 }
 
 // Speak the answer exactly as displayed, in the language it is written in, with a matching voice.
+// Returns {spoken:true,...} when speech was STARTED; a browser that later refuses it (autoplay policy) is reported
+// through notifySpeechProblem("blocked") from the utterance's error handler.
 async function speakResponse(data, selectedLang) {
     if (!window.speechSynthesis) {
         console.warn("Speech Synthesis API not supported.");
@@ -229,14 +278,20 @@ async function speakResponse(data, selectedLang) {
     const myRequest = ++speechRequestId;
     stopSpeaking();
     const claimed = (data && data.response_language) || selectedLang;
-    const voices = await loadVoices();
+    let voices = await loadVoices();
     if (myRequest !== speechRequestId) return { spoken: false, reason: "superseded" };   // language/answer changed while waiting
-    const plan = planSpeech(data && data.answer, claimed, voices);
+    let plan = planSpeech(data && data.answer, claimed, voices);
+    if (plan.action === "skip" && plan.reason === "voices_not_loaded") {
+        voices = await loadVoices(TTS_CONFIG.voiceWaitMs * 2);       // slow devices (Android) load voices late: wait once more
+        if (myRequest !== speechRequestId) return { spoken: false, reason: "superseded" };
+        plan = planSpeech(data && data.answer, claimed, voices);
+    }
     if (plan.action === "skip") {
-        if (plan.reason === "no_voice") notifyNoVoice();
+        if (plan.reason === "no_voice" || plan.reason === "voices_not_loaded") notifySpeechProblem(plan.reason, plan.lang);
         return { spoken: false, reason: plan.reason, lang: plan.lang || null };
     }
-    startSpeaking(plan);
+    lastSpeechNotice = null;
+    startSpeaking(plan, myRequest);
     return { spoken: true, lang: plan.lang, bcp: plan.bcp, voice: plan.voice ? plan.voice.name : null, mismatch: plan.mismatch };
 }
 
@@ -480,7 +535,7 @@ function speakNextChunk() {
         return;
     }
 
-    const { text, bcp, voice } = speechQueue.shift();
+    const { text, bcp, voice, lang, requestId } = speechQueue.shift();
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = bcp;
@@ -502,8 +557,14 @@ function speakNextChunk() {
     };
 
     utterance.onerror = function (e) {
-        if (e.error !== "interrupted") {
-            console.warn("TTS error:", e.error);
+        const err = e && e.error;
+        if (err !== "interrupted" && err !== "canceled") {
+            console.warn("TTS error:", err);
+            // Never fail silently: autoplay refusal ("not-allowed": Chrome needs a recent tap) is the common case.
+            if (requestId === undefined || requestId === speechRequestId) {
+                notifySpeechProblem(err === "not-allowed" ? "blocked"
+                    : (err === "language-unavailable" || err === "voice-unavailable") ? "no_voice" : "failed", lang);
+            }
         }
         speechQueue = [];
         isSpeaking = false;
@@ -526,6 +587,8 @@ window.SaarthiTTS = {
     TTS_LANGS: TTS_LANGS, config: TTS_CONFIG,
     resolveSpeechLang: resolveSpeechLang, effectiveAnswerLanguage: effectiveAnswerLanguage, pickVoice: pickVoice,
     loadVoices: loadVoices, planSpeech: planSpeech, speakResponse: speakResponse, cleanTextForSpeech: cleanTextForSpeech,
+    guessDevanagariLanguage: guessDevanagariLanguage, scriptShare: scriptShare,
+    lastNotice: () => lastSpeechNotice,
 };
 
 window.stopSpeaking = stopSpeaking;

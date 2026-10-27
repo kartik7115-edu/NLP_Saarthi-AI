@@ -24,11 +24,12 @@ def _norm(text: str) -> str:
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is not installed: frontend suites NOT run")
 def test_frontend_node_suites_pass():
-    p = subprocess.run(["node", "--test", "tests/frontend/voice.test.js", "tests/frontend/script.test.js"],
+    p = subprocess.run(["node", "--test", "tests/frontend/voice.test.js", "tests/frontend/script.test.js",
+                        "tests/frontend/stage5_repair.test.js", "tests/frontend/root_frontend.test.js"],
                        cwd=ROOT, capture_output=True, text=True, timeout=240)
     assert p.returncode == 0, p.stdout[-4000:] + p.stderr[-1500:]
     assert re.search(r"# fail 0\b", p.stdout)
-    assert int(re.search(r"# pass (\d+)", p.stdout).group(1)) >= 45
+    assert int(re.search(r"# pass (\d+)", p.stdout).group(1)) >= 62
 
 
 @pytest.mark.parametrize("url,marker", [
@@ -36,7 +37,8 @@ def test_frontend_node_suites_pass():
     ("/voice.js", "function loadVoices"),
     ("/script.js", "SaarthiTTS.speakResponse(data, getLang())"),
     ("/script.js", "function getRequestLang()"),
-    ("/sw.js", "saarthi-v3"),
+    ("/sw.js", "saarthi-v4"),
+    ("/sw.js", "networkFirst"),
 ])
 def test_backend_serves_the_modified_frontend(url, marker):
     r = client.get(url)
@@ -49,4 +51,5 @@ def test_served_bytes_are_exactly_frontend_dist(url, file):
 
 
 def test_old_service_worker_cache_name_is_gone():
-    assert "saarthi-v2" not in client.get("/sw.js").text
+    sw = client.get("/sw.js").text
+    assert "saarthi-v2" not in sw and "saarthi-v3" not in sw     # v4: old caches (with old scripts) are deleted on activate

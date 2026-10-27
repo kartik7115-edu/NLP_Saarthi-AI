@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     groq_model: str = "llama-3.3-70b-versatile"
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_timeout_seconds: float = 20.0
+    # Answer translation providers, tried in order: "machine" (Azure Translator / free Google endpoint) and "groq"
+    # (the configured Groq model, used only when Groq is configured). The first translation that passes validation wins.
+    translation_provider_order: str = "machine,groq"
 
     # Legacy Azure OpenAI settings: no longer used by the answer path (kept for rollback / test patch targets).
     azure_openai_endpoint: Optional[str] = None
