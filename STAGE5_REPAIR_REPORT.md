@@ -168,3 +168,21 @@ API-only check:
   it does not replace the served copy. These were left unchanged because changing them would swap the visible UI.
 * The uploaded archive contains a real `GROQ_API_KEY` in `.env`. It was not printed or copied into any output. Rotate it
   if the archive has been shared.
+
+## 7. Follow-up: findings from the first live run (Windows, real Groq + real Google)
+
+The user's server log (port 8001) showed the following. Each item is now fixed and has a test.
+
+| Log line | Cause | Fix |
+|---|---|---|
+| 8 × `POST /query` within a second of opening the page, then `RateLimitError (HTTP 429)` and Google `TooManyRequests` | `preCachePopularQueries()` sent 8 full Groq questions in parallel on the first visit (a new port is a new browser origin, so it ran again). That used up Groq's per-minute limit, so the user's own question got the offline answer. | Pre-caching starts after 15 s and runs one request at a time, 4 s apart, stopping on the first failure. Requests carry `X-Saarthi-Precache: 1`, and the backend answers them **without Groq** (grounded offline answer, machine translation only). |
+| `grounding guard (phone:1800, phone:180, phone:1551)` and `(phone:1800, phone:6446)` | gpt-oss writes `1800‑180‑1551` with U+2011 non-breaking hyphens. The guard split these *recorded* helplines (KCC `1800-180-1551`, PMAY-G `1800-11-6446`) into fragments and discarded correct answers. Reproduced exactly: the raw text gives `['phone:1800','phone:180','phone:1551']`. | `groq_client.normalize_output()` maps typographic dashes and no-break/zero-width spaces to ASCII before the guard. Invented numbers are still rejected. |
+| Repeated `429` while every call is already rate-limited | Each request retried Groq immediately. | A 429 pauses Groq calls for `Retry-After` seconds (20 s by default). Callers fall back at once (`llm_rate_limited`). |
+| `groq:protected_term_lost` | Groq translated a long offline answer (~50 placeholders) and dropped or mangled one, possibly at the output limit. | The prompt now states the exact placeholder count. `finish_reason=length` is reported as `llm_truncated`. Placeholders written with Devanagari digits are accepted. The token budget is sized to the text (≤ 4096) instead of up to 6000. |
+| `GET /index.html 404` | `sw.js` pre-caches `/index.html`, which the backend did not serve, so the service-worker install failed. | `/index.html` route added. |
+| `POST /query 307` on every question | The frontend posts to `/query`, but the route was `/query/`. | `/query` is served directly. |
+
+**Groq account limits still apply.** Each Groq answer call sends several thousand tokens of context. On a free or
+low tier, a few questions per minute can still hit the per-minute token limit. When that happens the app falls back
+honestly (offline answer, English or translated by Google, with a notice). It does not show English while claiming the
+answer is Hindi.

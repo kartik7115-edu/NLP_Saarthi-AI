@@ -170,7 +170,7 @@ class RAGEngine:
 
     def generate_answer_with_meta(self, context: str, question: str, farmer_profile: dict = None, language: str = "en",
                                   matched_schemes: list = None, conversation_history: list = None,
-                                  retrieval: Optional[RetrievalResult] = None) -> AnswerResult:
+                                  retrieval: Optional[RetrievalResult] = None, allow_llm: bool = True) -> AnswerResult:
         """Grounded answer generation: Groq over retrieved records, with an offline fallback.
 
         retrieval: the structured retrieval result. When given, the LLM context is built from it (intent-aware,
@@ -185,7 +185,9 @@ class RAGEngine:
                                 "offline", fallback_reason="empty_context", language=language)
 
         reason = None
-        if settings.offline_only:
+        if not allow_llm:
+            reason = "llm_not_requested"          # e.g. background pre-caching: keep the Groq quota for real questions
+        elif settings.offline_only:
             reason = "offline_only"
         elif not groq_client.is_configured():
             reason = "groq_not_configured"

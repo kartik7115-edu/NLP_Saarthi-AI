@@ -126,3 +126,22 @@ test("every UI language has the new speech strings, not English copies", () => {
     }
   }
 });
+
+test("popular-question pre-caching runs one request at a time, later, marked as background work", async () => {
+  let inFlight = 0, maxInFlight = 0;
+  const env = boot({ selectedLang: "hi", fetchImpl: async () => {
+    inFlight++; maxInFlight = Math.max(maxInFlight, inFlight);
+    await sleep(5); inFlight--;
+    return { ok: true, json: async () => ({ answer: "x", response_language: "en", recommended_schemes: [] }) };
+  } });
+  const delays = [];
+  env.sandbox.setTimeout = (f, ms) => { delays.push(ms); return setTimeout(f, 1); };   // compress the 15 s / 4 s waits
+  env.ctx.preCachePopularQueries();
+  assert.equal(env.fetchCalls.length, 0, "nothing is sent while the page is loading");
+  await sleep(200);
+  const calls = env.fetchCalls.filter((c) => String(c.url).endsWith("/query"));
+  assert.equal(calls.length, 8);
+  assert.equal(maxInFlight, 1, "never more than one background request at a time");
+  assert.ok(calls.every((c) => c.opts.headers["X-Saarthi-Precache"] === "1"));
+  assert.ok(delays.includes(15000) && delays.includes(4000));
+});

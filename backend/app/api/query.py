@@ -210,11 +210,17 @@ def _state_applicable(rec, state) -> bool:
     return bool(state) and rec_state.lower() == str(state).strip().lower()
 
 
+@router.post("", response_model=QueryResponse, include_in_schema=False)   # "/query" without the slash: no 307 round trip
 @router.post("/", response_model=QueryResponse)
 async def handle_query(request: QueryRequest, raw_request: Request, response: Response):
     client_ip = raw_request.client.host if raw_request.client else "unknown"
     _check_rate_limit(client_ip)
     original_query = request.query
+    # Background pre-caching by the frontend (popular questions for offline use) must not spend the Groq quota the
+    # user's own questions need: it gets the grounded offline answer and machine translation only.
+    background = raw_request.headers.get("x-saarthi-precache") == "1"
+    if background:
+        response.headers["X-Saarthi-Precache"] = "1"
 
     # --- languages: the language the ANSWER must be in (selected) is separate from the language the QUESTION is in
     language_note = None
@@ -238,7 +244,7 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
         if _usable_english(translated_query, original_query):
             english_query, query_translation = translated_query, "machine"
         else:
-            translated_query = await _run_llm_translate(original_query, query_lang, "en")
+            translated_query = None if background else await _run_llm_translate(original_query, query_lang, "en")
             if _usable_english(translated_query, original_query):
                 english_query, query_translation = translated_query, "groq"
             else:
@@ -305,6 +311,7 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
         matched_schemes=top_schemes,
         conversation_history=conv_history,
         retrieval=retrieval,
+        allow_llm=not background,
     )
     answer = answer_result.answer
     # The response body schema is unchanged; how the answer was produced is exposed as a header so an
@@ -317,7 +324,7 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
         protected_terms.append(s.get("name", ""))
         protected_terms.extend(s.get("aliases") or [])
 
-    providers = _translation_providers()
+    providers = [p for p in _translation_providers() if not (background and p[0] == "groq")]
     localization = LocalizationResult(answer, answer_result.language, "not_needed")
     if answer and answer_result.language != answer_lang:
         localization = await asyncio.to_thread(localize_with_fallbacks, answer, answer_lang, protected_terms, providers)

@@ -20,7 +20,13 @@ from app.services.language_utils import (
 )
 
 TOKEN_FMT = "QZ{}QZ"
-_TOKEN_RE = re.compile(r"QZ\s*(\d+)\s*QZ", re.I)
+# Providers sometimes write the placeholder digits in Devanagari (QZ३QZ) or with spaces: both still count.
+_TOKEN_RE = re.compile(r"QZ\s*([0-9\u0966-\u096F]+)\s*QZ", re.I)
+_DEV_DIGITS = {ord(c): str(i) for i, c in enumerate("\u0966\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f")}
+
+
+def _token_index(m) -> int:
+    return int(m.group(1).translate(_DEV_DIGITS))
 
 _URL_RE = re.compile(
     r"(?:https?://|www\.)[^\s<>()\[\]\"']+"
@@ -91,10 +97,10 @@ def protect_spans(text: str, terms: Iterable[str] = ()) -> Tuple[str, List[str]]
 
 def restore_spans(translated: str, originals: List[str]) -> Optional[str]:
     """Put the original spans back. Returns None unless every token appears exactly once."""
-    found = [int(m.group(1)) for m in _TOKEN_RE.finditer(translated)]
+    found = [_token_index(m) for m in _TOKEN_RE.finditer(translated)]
     if sorted(found) != list(range(len(originals))):
         return None
-    return _TOKEN_RE.sub(lambda m: originals[int(m.group(1))], translated)
+    return _TOKEN_RE.sub(lambda m: originals[_token_index(m)], translated)
 
 
 def localize_answer(english_text: str, target_lang: str, terms: Iterable[str],

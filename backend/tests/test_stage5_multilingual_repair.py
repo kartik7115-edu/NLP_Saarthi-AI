@@ -387,7 +387,8 @@ def test_E_reasoning_model_gets_a_low_reasoning_budget_and_a_large_token_budget(
     out = translate_with_groq(masked, "en", "hi")
     call = fake.calls[-1]
     assert call["model"] == "openai/gpt-oss-120b" and call["extra_body"] == {"reasoning_effort": "low"}
-    assert call["max_tokens"] >= 600 + 4 * len(masked) - 1 and call["temperature"] == 0.0
+    assert 500 + len(masked) - 1 <= call["max_tokens"] <= 4096 and call["temperature"] == 0.0
+    assert "exactly" in call["messages"][0]["content"] and "placeholders (QZ0QZ to QZ" in call["messages"][0]["content"]
     assert "QZ0QZ" in out
 
 
@@ -432,3 +433,85 @@ def test_F_eligibility_conditions_reach_the_answer_context_from_the_dataset():
     ctx = build_grounded_context(r).text
     assert ">>> ANSWER FIELD - ELIGIBILITY" in ctx
     assert "Income-tax payers" in ctx or "income-tax payers" in ctx.lower()       # PM-KISAN exclusion, from schemes.json
+
+
+# ======================================================================================== findings from the first live run
+# (Windows, real Groq gpt-oss-120b + real Google): correct answers rejected, 429 storms, failed SW install.
+def test_live_groq_answer_with_non_breaking_hyphens_in_a_recorded_helpline_is_accepted(ask):
+    """Log: 'Groq answer rejected by the grounding guard (phone:1800, phone:180, phone:1551)'. The model wrote the
+    dataset's Kisan Call Centre number 1800-180-1551 with U+2011 hyphens; the guard split it and discarded the answer."""
+    reply = ("Kisan Credit Card (KCC) is for owner cultivators, tenant farmers and sharecroppers. "
+             "For help call the Kisan Call Centre at 1800‑180‑1551.")
+    r, _, g = ask("What is the Kisan Credit Card helpline number?", "en", groq=RealisticGroq(answer=reply))
+    assert r.headers["X-Answer-Source"] == "groq", "a grounded answer must not be replaced by the offline answer"
+    assert "1800-180-1551" in r.json()["answer"] and "‑" not in r.json()["answer"]
+
+
+def test_an_invented_number_is_still_rejected_after_normalisation(ask):
+    reply = "Kisan Credit Card (KCC): call the helpline 1800‑999‑0000 for details."
+    r, _, _ = ask("What is the Kisan Credit Card helpline number?", "en", groq=RealisticGroq(answer=reply))
+    assert r.headers["X-Answer-Source"] == "offline"                     # guard still works
+
+
+def test_after_a_429_groq_is_paused_instead_of_hammered(monkeypatch):
+    class RateLimited(Exception):
+        status_code = 429
+        response = types.SimpleNamespace(headers={"retry-after": "7"})
+    calls = []
+
+    def create(**kw):
+        calls.append(kw)
+        raise RateLimited()
+    fake = types.SimpleNamespace(chat=types.SimpleNamespace(completions=types.SimpleNamespace(create=create)))
+    monkeypatch.setattr(settings, "groq_api_key", "gsk_fake")
+    monkeypatch.setattr(groq_client, "_make_client", lambda: fake)
+    monkeypatch.setattr(groq_client, "_cooldown_until", 0.0)
+    with pytest.raises(groq_client.GroqError, match="429"):
+        groq_client.chat([{"role": "user", "content": "x"}])
+    assert 6 < groq_client.cooldown_remaining() <= 7                       # Retry-After honoured
+    with pytest.raises(groq_client.GroqError, match="rate_limited"):
+        groq_client.chat([{"role": "user", "content": "y"}])
+    assert len(calls) == 1                                                 # the second call never reached Groq
+    with pytest.raises(TranslationError) as e:
+        translate_with_groq("Hello farmers, here is the answer.", "en", "hi")
+    assert e.value.code == "llm_rate_limited"
+    monkeypatch.setattr(groq_client, "_cooldown_until", 0.0)
+
+
+def test_a_truncated_groq_translation_is_reported_not_accepted(monkeypatch):
+    resp = types.SimpleNamespace(choices=[types.SimpleNamespace(finish_reason="length",
+                                                                message=types.SimpleNamespace(content="अधूरा अनुवाद QZ0QZ"))])
+    fake = types.SimpleNamespace(chat=types.SimpleNamespace(completions=types.SimpleNamespace(create=lambda **k: resp)))
+    monkeypatch.setattr(settings, "groq_api_key", "gsk_fake")
+    monkeypatch.setattr(groq_client, "_make_client", lambda: fake)
+    with pytest.raises(TranslationError) as e:
+        translate_with_groq("QZ0QZ gives Rs. 6,000.", "en", "hi")
+    assert e.value.code == "llm_truncated"
+
+
+def test_placeholders_written_with_devanagari_digits_are_restored():
+    masked, originals = protect_spans(FACTS_EN, ["PM-KISAN"])
+    dev = str.maketrans("0123456789", "०१२३४५६७८९")
+    res = localize_with_fallbacks(FACTS_EN, "hi", ["PM-KISAN"],
+                                  [("groq", lambda m, *_: re.sub(r"QZ(\d+)QZ", lambda x: "QZ" + x.group(1).translate(dev) + "QZ", _hi_facts(m)))])
+    assert res.status == "translated" and all(f in res.text for f in FACTS)
+
+
+def test_background_precache_requests_never_call_groq(ask, monkeypatch):
+    query_api._rate_limit.clear()
+    groq = RealisticGroq()
+    monkeypatch.setattr(settings, "groq_api_key", "gsk_fake")
+    monkeypatch.setattr(groq_client, "_make_client", lambda: groq)
+    with patch("app.api.query.brightdata_search", return_value=[]), patch("app.api.query.search_document_links", return_value=[]), \
+         patch("app.api.query.enrich_query_context", return_value=""), patch("app.api.query.get_relevant_gov_links", return_value=[]), \
+         patch("app.api.query.translator_service", machine("raise")):
+        r = client.post("/query", json={"query": Q_HI, "language": "hi"}, headers={"X-Saarthi-Precache": "1"})
+    assert r.status_code == 200 and r.headers["X-Answer-Source"] == "offline" and not groq.calls
+    assert r.json()["response_language"] == "en" and r.json()["translation_status"] == "failed"   # honest, no Groq spent
+
+
+def test_query_without_trailing_slash_is_served_directly_and_index_html_exists():
+    query_api._rate_limit.clear()
+    r = client.post("/query", json={"query": "PM-KISAN documents", "language": "en"}, follow_redirects=False)
+    assert r.status_code == 200
+    assert client.get("/index.html").status_code == 200                  # sw.js pre-caches it; 404 broke the SW install

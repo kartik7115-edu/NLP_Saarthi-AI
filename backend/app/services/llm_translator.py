@@ -32,6 +32,7 @@ _SYSTEM = (
     "5. Do not add, remove, soften or strengthen any information. Do not answer the text; only translate it."
 )
 _SCRIPT_HINT = {"hi": " in Devanagari script", "mr": " in Devanagari script (Marathi, not Hindi)"}
+_PLACEHOLDER = re.compile(r"QZ\d+QZ")
 _PREFACE = re.compile(r"^\s*(?:here is|here's|translation|अनुवाद|भाषांतर)[^\n]{0,40}:\s*\n", re.I)
 
 
@@ -53,17 +54,24 @@ def translate_with_groq(text: str, source: str = "en", target: str = "hi") -> st
     if not groq_client.is_configured():
         raise TranslationError("llm_not_configured")
     src_name = LANGUAGE_NAMES.get(src, "the source language") if src not in (None, "auto") else "the source language"
-    messages = [
-        {"role": "system", "content": _SYSTEM.format(src=src_name, tgt=LANGUAGE_NAMES[tgt], script=_SCRIPT_HINT.get(tgt, ""))},
-        {"role": "user", "content": text},
-    ]
-    # Devanagari needs several tokens per word; leave room for the whole answer (+ a little reasoning).
-    budget = min(6000, 600 + 4 * len(text))
+    system = _SYSTEM.format(src=src_name, tgt=LANGUAGE_NAMES[tgt], script=_SCRIPT_HINT.get(tgt, ""))
+    n_tokens = len(set(_PLACEHOLDER.findall(text)))
+    if n_tokens:
+        # telling the model exactly which placeholders exist makes it far less likely to drop or merge one
+        system += (f"\n6. This text contains exactly {n_tokens} placeholders (QZ0QZ to QZ{n_tokens - 1}QZ). "
+                   f"Your output must contain each of them exactly once.")
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": text}]
+    # Room for the whole translation (Devanagari needs more tokens than English) plus a little reasoning, but no
+    # more: Groq's per-minute token limit can count the requested max_tokens, so an oversized budget invites HTTP 429.
+    budget = min(4096, 500 + len(text))
     try:
-        out = groq_client.chat(messages, temperature=0.0, max_tokens=budget, extra_body=_model_options() or None)
+        out = groq_client.chat(messages, temperature=0.0, max_tokens=budget, extra_body=_model_options() or None,
+                               require_complete=True)
     except groq_client.GroqError as e:
         logger.warning("Groq translation %s->%s failed: %s", src, tgt, groq_client.redact(e))
-        code = "llm_empty_result" if str(e) == "empty_response" else "llm_failed"
+        code = {"empty_response": "llm_empty_result", "truncated": "llm_truncated"}.get(str(e), "llm_failed")
+        if str(e).startswith(("RateLimitError", "rate_limited")):
+            code = "llm_rate_limited"
         raise TranslationError(code, groq_client.redact(e)) from None
     out = _PREFACE.sub("", out.strip()).strip()
     if len(out) >= 2 and out[0] == out[-1] and out[0] in "\"'`":

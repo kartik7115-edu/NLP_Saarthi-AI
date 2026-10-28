@@ -1433,13 +1433,19 @@ function preCachePopularQueries() {
     const resolvedLang = getLang();
     const profileSnapshot = getFarmerProfileSnapshot();
 
-    popularQueries.forEach(query => {
+    // ONE request at a time, after the page has settled, marked as background work. Firing all of them at once on the
+    // first visit used up the AI model's per-minute limit (HTTP 429) and Google's 5 requests/second, so the user's own first
+    // question fell back to an English offline answer. The backend answers these without calling the AI model.
+    const pending = popularQueries.filter(q => !getCachedResponse(buildCacheKey(q, resolvedLang, profileSnapshot)));
+    const PRECACHE_START_MS = 15000, PRECACHE_GAP_MS = 4000;
+    const runNext = () => {
+        const query = pending.shift();
+        if (!query) { try { localStorage.setItem(PRECACHE_KEY, Date.now().toString()); } catch (e) {} return; }
+        if (!isOnline()) return;
         const cacheKey = buildCacheKey(query, resolvedLang, profileSnapshot);
-        if (getCachedResponse(cacheKey)) return;
-
         fetch(`${API_URL}/query`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "X-Saarthi-Precache": "1" },
             body: JSON.stringify({
                 query,
                 language: resolvedLang,
@@ -1454,10 +1460,11 @@ function preCachePopularQueries() {
             throw new Error('precache_fail');
         }).then(data => {
             cacheResponse(cacheKey, data, query, resolvedLang);
-        }).catch(() => {});
-    });
-
-    localStorage.setItem(PRECACHE_KEY, Date.now().toString());
+            setTimeout(runNext, PRECACHE_GAP_MS);
+        }).catch(() => {});                            // stop on the first failure (offline, rate limit): retry next visit
+    };
+    if (pending.length) setTimeout(runNext, PRECACHE_START_MS);
+    else localStorage.setItem(PRECACHE_KEY, Date.now().toString());
 }
 
 function updateMicHint() {

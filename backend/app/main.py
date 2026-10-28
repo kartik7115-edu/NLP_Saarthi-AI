@@ -58,6 +58,11 @@ if FRONTEND_DIR:
     def serve_index():
         return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
+    @app.get("/index.html")
+    def serve_index_html():
+        # sw.js pre-caches "/index.html": a 404 here made the service worker's install fail
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="frontend_static")
 
     @app.get("/manifest.json")
