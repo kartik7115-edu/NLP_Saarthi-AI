@@ -456,6 +456,9 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
                 "maps_url": c.get("maps_url"),
             })
 
+    logger.info("query lang=%s source=%s translation=%s provider=%s attempts=%s records=%d",
+                answer_lang, answer_result.source + (" (saved)" if answer_result.cached else ""), localization.status,
+                localization.provider or "-", ",".join(localization.attempts) or "-", len(top_schemes))
     return QueryResponse(
         intent=intent,
         answer=final_answer,

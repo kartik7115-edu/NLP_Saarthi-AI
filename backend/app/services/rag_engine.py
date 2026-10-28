@@ -1,5 +1,8 @@
+import json
 import logging
 import hashlib
+import os
+import threading
 import time
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
@@ -17,7 +20,58 @@ logger = logging.getLogger(__name__)
 
 _answer_cache = {}
 _ANSWER_CACHE_MAX = 500
-_ANSWER_CACHE_TTL = 3600
+_ANSWER_CACHE_TTL = 3600          # legacy name; the effective TTL is settings.answer_cache_ttl_seconds
+_cache_lock = threading.Lock()
+_cache_loaded_from = None
+_BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _cache_path():
+    p = (settings.answer_cache_file or "").strip()
+    if not p:
+        return None
+    return p if os.path.isabs(p) else os.path.join(_BACKEND_DIR, p)
+
+
+def _cache_ttl() -> float:
+    return float(settings.answer_cache_ttl_seconds or _ANSWER_CACHE_TTL)
+
+
+def _cache_get(key):
+    path = _cache_path()
+    global _cache_loaded_from
+    if path and _cache_loaded_from != path:
+        _cache_loaded_from = path
+        try:
+            with open(path, encoding="utf-8") as f:
+                for k, v in (json.load(f) or {}).items():
+                    _answer_cache.setdefault(k, v)
+            logger.info("Loaded %d saved answers from %s", len(_answer_cache), path)
+        except FileNotFoundError:
+            pass
+        except Exception as e:                                    # a corrupt cache file must never break answering
+            logger.warning("Ignoring unreadable answer cache %s: %s", path, type(e).__name__)
+    entry = _answer_cache.get(key)
+    if entry and (time.time() - entry["ts"]) < _cache_ttl():
+        return entry
+    return None
+
+
+def _cache_put(key, answer, language="en"):
+    with _cache_lock:
+        if len(_answer_cache) >= _ANSWER_CACHE_MAX:
+            del _answer_cache[min(_answer_cache, key=lambda k: _answer_cache[k]["ts"])]
+        _answer_cache[key] = {"answer": answer, "ts": time.time(), "language": language}
+        path = _cache_path()
+        if not path:
+            return
+        try:
+            tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(_answer_cache, f, ensure_ascii=False)
+            os.replace(tmp, path)
+        except Exception as e:
+            logger.warning("Could not save the answer cache: %s", type(e).__name__)
 
 LANG_NAMES = {
     "hi": "Hindi", "en": "English", "bn": "Bengali", "te": "Telugu",
@@ -195,7 +249,9 @@ class RAGEngine:
             reason = "groq_not_configured"
         else:
             model = groq_client.model_name()
-            history_summary = "|".join(m.get("content", "")[:50] for m in (conversation_history or [])[-4:])
+            # Not part of the cache key: the answer is determined by the question and the retrieved records, so the same
+            # question gets its saved answer whether it is the first message of a chat or a later one.
+            history_summary = ""
             gctx = grounded or GroundedContext.from_text(ctx_text)
             if answer_language and answer_language != "en" and (settings.answer_generation_mode or "").lower() == "direct":
                 direct = self._direct_answer(model, ctx_text, question, farmer_profile, history_summary, conversation_history,
@@ -206,8 +262,8 @@ class RAGEngine:
                     return AnswerResult(self._offline_answer(question, farmer_profile, language, matched_schemes, retrieval),
                                         "offline", fallback_reason="groq_rate_limited", language=language)
             key = self._groq_cache_key(model, ctx_text, question, farmer_profile, history_summary, "en")
-            cached = _answer_cache.get(key)
-            if cached and (time.time() - cached["ts"]) < _ANSWER_CACHE_TTL:
+            cached = _cache_get(key)
+            if cached:
                 logger.info("Returning cached Groq answer")
                 return AnswerResult(cached["answer"], "groq", model, cached=True)
             try:
@@ -219,10 +275,7 @@ class RAGEngine:
                     logger.warning("Groq answer rejected by the grounding guard (%d issue(s): %s); using offline answer",
                                    len(problems), ", ".join(problems[:3]))
                 else:
-                    if len(_answer_cache) >= _ANSWER_CACHE_MAX:
-                        oldest = min(_answer_cache, key=lambda k: _answer_cache[k]["ts"])
-                        del _answer_cache[oldest]
-                    _answer_cache[key] = {"answer": answer, "ts": time.time()}
+                    _cache_put(key, answer, "en")
                     return AnswerResult(answer, "groq", model)
             except groq_client.GroqError as e:
                 reason = f"groq_error: {groq_client.redact(e)}"
@@ -237,12 +290,15 @@ class RAGEngine:
         """One Groq call that answers directly in `answer_language`. Returns an AnswerResult when the answer passes the
         grounding guard AND is really in that language; otherwise a short reason string (the caller falls back)."""
         key = self._groq_cache_key(model, ctx_text, question, farmer_profile, history_summary, answer_language)
-        cached = _answer_cache.get(key)
-        if cached and (time.time() - cached["ts"]) < _ANSWER_CACHE_TTL:
+        cached = _cache_get(key)
+        if cached:
             return AnswerResult(cached["answer"], "groq", model, cached=True, language=answer_language)
         try:
             messages = build_messages(ctx_text, question, conversation_history, answer_language, original_question)
-            answer = groq_client.chat(messages, max_tokens=1800, require_complete=True)
+            # gpt-oss counts its hidden reasoning against max_tokens: low effort + a generous budget keeps a long
+            # Devanagari answer from being cut off (a cut-off answer is rejected and costs a second call).
+            opts = {"reasoning_effort": "low"} if model.startswith("openai/gpt-oss") else None
+            answer = groq_client.chat(messages, max_tokens=2500, require_complete=True, extra_body=opts)
         except groq_client.GroqError as e:
             msg = groq_client.redact(e)
             logger.warning("Groq direct %s answer failed (%s)", answer_language, msg)
@@ -254,9 +310,7 @@ class RAGEngine:
             logger.warning("Groq direct %s answer rejected (%s); falling back to English + translation", answer_language,
                            ", ".join(problems[:3]) or lang_problem)
             return "rejected"
-        if len(_answer_cache) >= _ANSWER_CACHE_MAX:
-            del _answer_cache[min(_answer_cache, key=lambda k: _answer_cache[k]["ts"])]
-        _answer_cache[key] = {"answer": answer, "ts": time.time()}
+        _cache_put(key, answer, answer_language)
         return AnswerResult(answer, "groq", model, language=answer_language)
 
     def generate_answer(self, context: str, question: str, farmer_profile: dict = None, language: str = "en",

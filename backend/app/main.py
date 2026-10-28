@@ -1,4 +1,5 @@
 import os
+import logging
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -7,6 +8,14 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from app.api import health, schemes, query, help_centers
 from app.services.rag_engine import rag_engine
 from mangum import Mangum
+
+# Show the app's own INFO lines (one summary line per question) and warnings with their level, under uvicorn too.
+_app_log = logging.getLogger("app")
+if not _app_log.handlers:
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    _app_log.addHandler(_h)
+    _app_log.setLevel(logging.INFO)
 
 app = FastAPI(title="SaarthiAI", description="Voice-first AI assistant for government schemes.")
 

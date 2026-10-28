@@ -624,3 +624,47 @@ def test_direct_answer_with_an_invented_number_is_rejected(ask):
     g.chat.completions.create = create
     r, _, _ = ask(Q_HI, "hi", translator=machine("raise"), groq=g)
     assert "1800-999-0000" not in r.json()["answer"]
+
+
+# ======================================================================================== saved answers (demo safety)
+def test_validated_answers_survive_a_restart_and_are_served_without_groq(ask, monkeypatch, tmp_path):
+    path = tmp_path / "answer_cache.json"
+    monkeypatch.setattr(settings, "answer_cache_file", str(path))
+    monkeypatch.setattr(rag_module, "_cache_loaded_from", None)
+    r1, _, _ = ask(Q_HI, "hi", translator=machine("raise"), groq=DirectGroq())
+    assert r1.headers["X-Translation-Provider"] == "groq_direct" and path.exists()
+    first = r1.json()["answer"]
+
+    class NoGroq(DirectGroq):
+        def _create(self, **kw):
+            if self.kind(kw) == "answer":
+                raise AssertionError("Groq must not be called for a saved answer")
+            return super()._create(**kw)
+    monkeypatch.setattr(rag_module, "_cache_loaded_from", None)       # "restart": the ask fixture also empties memory
+    r2, _, g2 = ask(Q_HI, "hi", translator=machine("raise"), groq=NoGroq())
+    assert r2.status_code == 200 and r2.json()["answer"] == first
+    assert r2.json()["response_language"] == "hi" and r2.headers["X-Translation-Provider"] == "groq_direct"
+    assert not [c for c in g2.calls if g2.kind(c) == "answer"]
+
+
+def test_cache_file_is_loaded_lazily_after_a_restart(monkeypatch, tmp_path):
+    import json as _json
+    path = tmp_path / "c.json"
+    path.write_text(_json.dumps({"k1": {"answer": "उत्तर", "ts": __import__("time").time(), "language": "hi"}}), encoding="utf-8")
+    monkeypatch.setattr(settings, "answer_cache_file", str(path))
+    monkeypatch.setattr(rag_module, "_cache_loaded_from", None)
+    rag_module._answer_cache.clear()
+    assert rag_module._cache_get("k1")["answer"] == "उत्तर"
+    path.write_text("{not json", encoding="utf-8")                                   # corrupt file never breaks answering
+    monkeypatch.setattr(rag_module, "_cache_loaded_from", None)
+    rag_module._answer_cache.clear()
+    assert rag_module._cache_get("k1") is None
+    rag_module._answer_cache.clear()
+
+
+def test_direct_call_uses_low_reasoning_and_a_budget_for_long_devanagari(ask, monkeypatch):
+    monkeypatch.setattr(settings, "groq_model", "openai/gpt-oss-120b")
+    g = DirectGroq()
+    ask(Q_HI, "hi", translator=machine("raise"), groq=g)
+    call = [c for c in g.calls if g.kind(c) == "answer"][0]
+    assert call["max_tokens"] == 2500 and call["extra_body"] == {"reasoning_effort": "low"}

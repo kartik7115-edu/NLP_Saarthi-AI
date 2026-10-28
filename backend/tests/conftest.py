@@ -18,6 +18,12 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
+def _no_answer_cache_file(monkeypatch):
+    """Tests never read or write the on-disk answer cache (backend/app/data/answer_cache.json)."""
+    monkeypatch.setattr(settings, "answer_cache_file", "")
+
+
+@pytest.fixture(autouse=True)
 def _no_live_llm(request, monkeypatch):
     if request.node.get_closest_marker("live"):
         return

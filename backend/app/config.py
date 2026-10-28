@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # Translate the recommendation-card descriptions with Groq as well (an extra Groq call per question; off by default
     # to stay inside Groq's per-minute token limit). Machine translation is always tried for the cards.
     translate_cards_with_llm: bool = False
+    # Validated Groq answers are also kept on disk, so they survive restarts (uvicorn --reload restarts on every file
+    # change) and a question asked once - e.g. by scripts/warm_answer_cache.py before a demo - is answered again without
+    # calling Groq. The key includes the exact retrieved context, so a dataset change never serves a stale answer.
+    # Empty string disables the file.
+    answer_cache_file: str = "app/data/answer_cache.json"
+    answer_cache_ttl_seconds: int = 7 * 24 * 3600
 
     # Legacy Azure OpenAI settings: no longer used by the answer path (kept for rollback / test patch targets).
     azure_openai_endpoint: Optional[str] = None

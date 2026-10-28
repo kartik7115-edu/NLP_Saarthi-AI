@@ -26,3 +26,6 @@ Thumbs.db
 # Local development metadata
 .config/
 .local/
+# saved Groq answers (local runtime cache)
+backend/app/data/answer_cache.json
+backend/app/data/answer_cache.json.tmp
