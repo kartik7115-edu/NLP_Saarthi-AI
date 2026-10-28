@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 import uuid
 import requests
 from deep_translator import GoogleTranslator
@@ -36,6 +37,7 @@ class TranslationError(Exception):
         self.code = code
 
 
+GOOGLE_RATE_LIMIT_COOLDOWN_SECONDS = 120   # after HTTP 429 from the free Google endpoint
 MAX_CHUNK_CHARS = 4000   # the free Google endpoint rejects >5000 characters per request
 
 
@@ -125,15 +127,27 @@ class TranslatorService:
             except Exception as e:
                 logger.warning(f"Azure translation failed, falling back: {e}")
                 failures.append(f"azure:{type(e).__name__}")
+        if self._google_cooldown_remaining() > 0:
+            # Google answered "too many requests" recently: asking again only adds latency and extends the block
+            failures.append("google:cooling_down")
+            raise TranslationError("all_providers_failed", ", ".join(failures))
         try:
             out = GoogleTranslator(source=source, target=target).translate(chunk)
             if isinstance(out, str) and out.strip():
                 return out
             failures.append("google:empty_result")
         except Exception as e:
-            logger.error(f"Translation failed from {source} to {target}: {e}")
+            if type(e).__name__ == "TooManyRequests":
+                self._google_blocked_until = time.monotonic() + GOOGLE_RATE_LIMIT_COOLDOWN_SECONDS
+                logger.warning("Google Translate rate limit reached; not using it for %ds (other providers continue)",
+                               GOOGLE_RATE_LIMIT_COOLDOWN_SECONDS)
+            else:
+                logger.error(f"Translation failed from {source} to {target}: {e}")
             failures.append(f"google:{type(e).__name__}")
         raise TranslationError("all_providers_failed", ", ".join(failures))
+
+    def _google_cooldown_remaining(self) -> float:
+        return max(0.0, getattr(self, "_google_blocked_until", 0.0) - time.monotonic())
 
     def translate_text_strict(self, text: str, source: str = "auto", target: str = "en") -> str:
         """Translate or raise TranslationError. Never returns the input as if it had been translated.
@@ -176,7 +190,7 @@ class TranslatorService:
             return None
 
         if not self.azure_available:
-            logger.warning("Azure Translator not available for transliteration")
+            logger.debug("Azure Translator not configured: no romanized transliteration")   # optional feature, not an error
             return None
 
         script_info = TRANSLITERATION_SCRIPTS.get(language)

@@ -515,3 +515,31 @@ def test_query_without_trailing_slash_is_served_directly_and_index_html_exists()
     r = client.post("/query", json={"query": "PM-KISAN documents", "language": "en"}, follow_redirects=False)
     assert r.status_code == 200
     assert client.get("/index.html").status_code == 200                  # sw.js pre-caches it; 404 broke the SW install
+
+
+def test_google_rate_limit_pauses_google_and_the_groq_fallback_still_translates(monkeypatch):
+    """Second live run: every Google call returned TooManyRequests. Google is now skipped for a while instead of
+    being asked (and failing) on every request; translation continues with the next provider."""
+    from app.services import translator as tr_mod
+    calls = []
+
+    class TooManyRequests(Exception):
+        pass
+
+    class FakeGoogle:
+        def __init__(self, source, target):
+            pass
+
+        def translate(self, text):
+            calls.append(text)
+            raise TooManyRequests("You made too many requests to the server.")
+    svc = tr_mod.TranslatorService()
+    monkeypatch.setattr(tr_mod, "GoogleTranslator", FakeGoogle)
+    monkeypatch.setattr(settings, "azure_translator_key", None)
+    with pytest.raises(TranslationError):
+        svc.translate_text_strict("Farmers can apply for PM-KISAN at the CSC.", "en", "hi")
+    with pytest.raises(TranslationError) as e:
+        svc.translate_text_strict("Farmers can apply for PMFBY at the bank.", "en", "hi")
+    assert len(calls) == 1 and "google:cooling_down" in str(e.value)
+    res = localize_with_fallbacks(FACTS_EN, "hi", ["PM-KISAN"], [("machine", svc.translate_text_strict), ("groq", _hi_facts)])
+    assert res.status == "translated" and res.provider == "groq" and res.attempts == ["machine:all_providers_failed"]
