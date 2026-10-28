@@ -109,3 +109,12 @@ def test_the_three_languages_carry_the_same_facts(entry):
     assert facts["hi"] == facts["mr"] == facts["en"], (entry["id"], facts)
     for lang in ("hi", "mr"):
         assert detect_devanagari_language(entry["answers"][lang]) == lang, (entry["id"], lang)
+
+
+@pytest.mark.parametrize("lang", ["hi", "mr", "en"])
+def test_card_descriptions_keep_numbers_and_drop_the_repeated_name(lang):
+    e = next(x for x in ENTRIES if x["id"] == "subsidy-eligibility")
+    d = faq_answers.card_description(e, lang, SCHEMES["pm-kisan-maan-dhan"])
+    assert "18-40" in d and "Maan Dhan" not in d
+    d2 = faq_answers.card_description(e, lang, SCHEMES["pm-kisan"])
+    assert not d2.startswith("PM-KISAN") and "6,000" in d2

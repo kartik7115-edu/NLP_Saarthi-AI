@@ -67,7 +67,8 @@ def find(question: str, language: str) -> Optional[Dict[str, Any]]:
 
 
 def _strip_md(line: str) -> str:
-    return re.sub(r"\*\*(.+?)\*\*", r"\1", line).lstrip("-•0123456789. ").strip()
+    line = re.sub(r"^\s*(?:[-•]|\d+[.)])\s+", "", line)        # list marker only - never digits that are content
+    return re.sub(r"\*\*(.+?)\*\*", r"\1", line).strip()
 
 
 def card_description(entry: Dict[str, Any], language: str, scheme: Dict[str, Any]) -> str:
@@ -77,6 +78,7 @@ def card_description(entry: Dict[str, Any], language: str, scheme: Dict[str, Any
     lines = [l for l in answer.split("\n") if l.strip()]
     for l in lines:
         if any(n and f"**{n}" in l for n in names) and len(lines) > 1 and l != lines[0]:
-            return _strip_md(l)
+            # "- **PM-KISAN**: text" -> "text" (the card already shows the scheme name)
+            return _strip_md(re.sub(r"^\s*[-•]?\s*\*\*.+?\*\*(?:\s*\([^)]*\))?\s*:\s*", "", l)) or _strip_md(l)
     first = _strip_md(lines[0]) if lines else ""
     return first
