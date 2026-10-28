@@ -312,6 +312,8 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
         conversation_history=conv_history,
         retrieval=retrieval,
         allow_llm=not background,
+        answer_language=answer_lang,
+        original_question=original_query if english_query != original_query else None,
     )
     answer = answer_result.answer
     # The response body schema is unchanged; how the answer was produced is exposed as a header so an
@@ -326,7 +328,10 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
 
     providers = [p for p in _translation_providers() if not (background and p[0] == "groq")]
     localization = LocalizationResult(answer, answer_result.language, "not_needed")
-    if answer and answer_result.language != answer_lang:
+    if answer and answer_result.language == answer_lang != "en":
+        # Groq wrote the answer directly in the requested language (validated in rag_engine): nothing to translate
+        localization = LocalizationResult(answer, answer_lang, "translated", provider="groq_direct")
+    elif answer and answer_result.language != answer_lang:
         localization = await asyncio.to_thread(localize_with_fallbacks, answer, answer_lang, protected_terms, providers)
         if localization.status == "failed":
             # Fallback policy: the English answer, labelled "en", status "failed" (the frontend tells the user).
@@ -388,8 +393,9 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
             descs = [rec["description"] or "" for rec in filtered_recs]
             names = [rec["name"] for rec in filtered_recs] + protected_terms
             localized, card_result = (None, None)
-            if all(d.strip() for d in descs):
-                localized, card_result = await asyncio.to_thread(_localize_cards, descs, answer_lang, names, providers)
+            card_providers = [p for p in providers if p[0] != "groq" or settings.translate_cards_with_llm]
+            if all(d.strip() for d in descs) and card_providers:
+                localized, card_result = await asyncio.to_thread(_localize_cards, descs, answer_lang, names, card_providers)
             response.headers["X-Cards-Translation"] = "translated" if localized else "failed"
             if not localized:
                 logger.warning("Recommendation cards could not be translated to %s (%s); keeping English descriptions",

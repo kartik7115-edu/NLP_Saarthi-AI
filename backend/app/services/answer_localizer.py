@@ -131,6 +131,21 @@ def localize_answer(english_text: str, target_lang: str, terms: Iterable[str],
     return LocalizationResult(restored, target_lang, "translated")
 
 
+def native_answer_problem(text: str, lang: str, terms: Iterable[str] = ()) -> Optional[str]:
+    """None when `text` really is written in `lang` (scheme names, URLs and numbers may stay Latin), else a reason."""
+    if not text or not text.strip():
+        return "empty"
+    if lang == "en" or lang not in LANGUAGE_SCRIPT:
+        return None
+    masked, _ = protect_spans(text, terms)
+    prose = _TOKEN_RE.sub(" ", masked)
+    if sum(letter_counts(prose).values()) < 8 or script_ratio(prose, LANGUAGE_SCRIPT[lang]) < MIN_NATIVE_RATIO:
+        return "not_in_target_language"
+    if wrong_devanagari_language(prose, lang):
+        return "wrong_language"
+    return None
+
+
 TranslateFn = Callable[[str, str, str], str]
 
 

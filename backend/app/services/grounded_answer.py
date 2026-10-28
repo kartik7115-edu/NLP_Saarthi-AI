@@ -402,16 +402,42 @@ def build_grounded_context(retrieval: RetrievalResult, farmer_profile: Optional[
     return GroundedContext(text="\n".join(L), allowed_urls=allowed_urls, allowed_phone_digits=digits, views=views)
 
 
-def build_messages(context_text: str, question: str, conversation_history: Optional[list] = None) -> List[Dict[str, str]]:
-    messages = [{"role": "system", "content": GROUNDING_SYSTEM_PROMPT}]
+_LANG_NAMES = {"hi": "Hindi", "mr": "Marathi", "bn": "Bengali", "te": "Telugu", "ta": "Tamil", "gu": "Gujarati",
+               "kn": "Kannada", "ml": "Malayalam", "pa": "Punjabi", "or": "Odia"}
+_SCRIPT_NOTE = {"hi": "Devanagari script", "mr": "Devanagari script - Marathi, NOT Hindi"}
+_ENGLISH_STYLE = "Plain, simple English (the answer may be translated afterwards)."
+
+
+def system_prompt(answer_language: str = "en") -> str:
+    """The grounding prompt; for another answer language the answer is written directly in that language."""
+    if not answer_language or answer_language == "en" or answer_language not in _LANG_NAMES:
+        return GROUNDING_SYSTEM_PROMPT
+    name = _LANG_NAMES[answer_language]
+    script = _SCRIPT_NOTE.get(answer_language, f"the {name} script")
+    return (GROUNDING_SYSTEM_PROMPT.replace(_ENGLISH_STYLE, f"Natural, simple, everyday {name} that a farmer understands.")
+            + f"""
+
+ANSWER LANGUAGE - {name.upper()}
+- Write the ENTIRE answer in {name} ({script}): the direct answer, bullet points, notes, caveats and any follow-up question.
+- The context is in English: translate its meaning faithfully; do not add, drop, soften or strengthen any fact.
+- Copy these exactly as they appear in the context, in Latin letters and ASCII digits: official scheme names and
+  acronyms (for example PM-KISAN, PMFBY, KCC), URLs, phone numbers, rupee amounts, percentages and dates.""")
+
+
+def build_messages(context_text: str, question: str, conversation_history: Optional[list] = None,
+                   answer_language: str = "en", original_question: Optional[str] = None) -> List[Dict[str, str]]:
+    messages = [{"role": "system", "content": system_prompt(answer_language)}]
     for msg in (conversation_history or [])[-MAX_HISTORY_TURNS * 2:]:
         role, content = msg.get("role", "user"), msg.get("content", "")
         if role in ("user", "assistant") and content:
             if role == "assistant" and len(content) > 800:
                 content = content[:800] + "..."
             messages.append({"role": role, "content": content})
-    messages.append({"role": "user", "content": f"{context_text}\n\nUSER QUESTION: {question}\n\n"
-                                                "Answer using only the knowledge context above and follow the grounding rules."})
+    asked = f"\n(The user asked in their own language: {original_question})" if original_question and original_question != question else ""
+    tail = "Answer using only the knowledge context above and follow the grounding rules."
+    if answer_language and answer_language != "en" and answer_language in _LANG_NAMES:
+        tail += f" Write the answer in {_LANG_NAMES[answer_language]}."
+    messages.append({"role": "user", "content": f"{context_text}\n\nUSER QUESTION: {question}{asked}\n\n{tail}"})
     return messages
 
 
@@ -419,7 +445,8 @@ def build_messages(context_text: str, question: str, conversation_history: Optio
 _URL_RE = re.compile(
     r"(?:https?://|www\.)[^\s<>()\[\]\"']+"
     r"|\b[a-z0-9][a-z0-9\-]*(?:\.[a-z0-9\-]+)*\.(?:gov\.in|nic\.in|gov|nic|org|com|net|co\.in|in)\b(?:/[^\s<>()\[\]\"']*)?", re.I)
-_CUE_RE = re.compile(r"helpline|toll[\s-]?free|call|phone|contact|dial|number", re.I)
+_CUE_RE = re.compile(r"helpline|toll[\s-]?free|call|phone|contact|dial|number"
+                     r"|हेल्पलाइन|हेल्पलाईन|टोल|कॉल|फोन|फ़ोन|संपर्क|नंबर|क्रमांक|डायल", re.I)
 _NUM_RE = re.compile(r"(?<![\d,.])(\d[\d\s\-]{1,14}\d)(?![\d,])")
 _MONEY_BEFORE = re.compile(r"(?:rs\.?|inr|₹)\s*$", re.I)
 _UNIT_AFTER = re.compile(r"^\s*(?:%|per\b|hectare|acre|days?\b|lakh|crore|hp\b|mt\b|kw|mw|years?\b|months?\b|times?\b)", re.I)

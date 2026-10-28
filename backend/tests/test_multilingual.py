@@ -60,6 +60,8 @@ def run(monkeypatch):
         translator = translator or FakeTranslator()
         fake_groq = FakeGroqClient(reply=reply, exc=groq_exc)
         monkeypatch.setattr(settings, "offline_only", False)
+        # these tests cover the English-answer-then-translate path (the fallback of the default "direct" mode)
+        monkeypatch.setattr(settings, "answer_generation_mode", "translate")
         monkeypatch.setattr(settings, "groq_api_key", "gsk_fake_key_for_tests" if groq else None)
         monkeypatch.setattr(groq_client, "_make_client", lambda: fake_groq)
         payload = {"query": query, **({} if omit_language else {"language": language}), **(payload_extra or {})}

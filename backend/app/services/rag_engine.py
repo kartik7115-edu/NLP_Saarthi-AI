@@ -10,6 +10,7 @@ from app.services import groq_client
 from app.services.grounded_answer import (
     GroundedContext, build_grounded_context, build_messages, check_answer_grounding, render_offline_answer,
 )
+from app.services.answer_localizer import native_answer_problem
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -170,7 +171,8 @@ class RAGEngine:
 
     def generate_answer_with_meta(self, context: str, question: str, farmer_profile: dict = None, language: str = "en",
                                   matched_schemes: list = None, conversation_history: list = None,
-                                  retrieval: Optional[RetrievalResult] = None, allow_llm: bool = True) -> AnswerResult:
+                                  retrieval: Optional[RetrievalResult] = None, allow_llm: bool = True,
+                                  answer_language: str = "en", original_question: Optional[str] = None) -> AnswerResult:
         """Grounded answer generation: Groq over retrieved records, with an offline fallback.
 
         retrieval: the structured retrieval result. When given, the LLM context is built from it (intent-aware,
@@ -194,6 +196,15 @@ class RAGEngine:
         else:
             model = groq_client.model_name()
             history_summary = "|".join(m.get("content", "")[:50] for m in (conversation_history or [])[-4:])
+            gctx = grounded or GroundedContext.from_text(ctx_text)
+            if answer_language and answer_language != "en" and (settings.answer_generation_mode or "").lower() == "direct":
+                direct = self._direct_answer(model, ctx_text, question, farmer_profile, history_summary, conversation_history,
+                                             answer_language, original_question, gctx)
+                if isinstance(direct, AnswerResult):
+                    return direct
+                if direct == "rate_limited":            # a second call now would fail too: go straight to the fallback
+                    return AnswerResult(self._offline_answer(question, farmer_profile, language, matched_schemes, retrieval),
+                                        "offline", fallback_reason="groq_rate_limited", language=language)
             key = self._groq_cache_key(model, ctx_text, question, farmer_profile, history_summary, "en")
             cached = _answer_cache.get(key)
             if cached and (time.time() - cached["ts"]) < _ANSWER_CACHE_TTL:
@@ -202,7 +213,7 @@ class RAGEngine:
             try:
                 messages = build_messages(ctx_text, question, conversation_history)
                 answer = groq_client.chat(messages)
-                problems = check_answer_grounding(answer, grounded or GroundedContext.from_text(ctx_text))
+                problems = check_answer_grounding(answer, gctx)
                 if problems:
                     reason = "ungrounded_output"
                     logger.warning("Groq answer rejected by the grounding guard (%d issue(s): %s); using offline answer",
@@ -220,6 +231,33 @@ class RAGEngine:
         # Fallback. Deliberately NOT cached: a recovered Groq must not be hidden behind a cached offline answer.
         return AnswerResult(self._offline_answer(question, farmer_profile, language, matched_schemes, retrieval),
                             "offline", fallback_reason=reason, language=language)
+
+    def _direct_answer(self, model, ctx_text, question, farmer_profile, history_summary, conversation_history,
+                       answer_language, original_question, gctx):
+        """One Groq call that answers directly in `answer_language`. Returns an AnswerResult when the answer passes the
+        grounding guard AND is really in that language; otherwise a short reason string (the caller falls back)."""
+        key = self._groq_cache_key(model, ctx_text, question, farmer_profile, history_summary, answer_language)
+        cached = _answer_cache.get(key)
+        if cached and (time.time() - cached["ts"]) < _ANSWER_CACHE_TTL:
+            return AnswerResult(cached["answer"], "groq", model, cached=True, language=answer_language)
+        try:
+            messages = build_messages(ctx_text, question, conversation_history, answer_language, original_question)
+            answer = groq_client.chat(messages, max_tokens=1800, require_complete=True)
+        except groq_client.GroqError as e:
+            msg = groq_client.redact(e)
+            logger.warning("Groq direct %s answer failed (%s)", answer_language, msg)
+            return "rate_limited" if ("429" in msg or msg.startswith("rate_limited")) else "error"
+        problems = check_answer_grounding(answer, gctx)
+        terms = ["Saarthi.AI"] + [v.name for v in gctx.views]
+        lang_problem = native_answer_problem(answer, answer_language, terms)
+        if problems or lang_problem:
+            logger.warning("Groq direct %s answer rejected (%s); falling back to English + translation", answer_language,
+                           ", ".join(problems[:3]) or lang_problem)
+            return "rejected"
+        if len(_answer_cache) >= _ANSWER_CACHE_MAX:
+            del _answer_cache[min(_answer_cache, key=lambda k: _answer_cache[k]["ts"])]
+        _answer_cache[key] = {"answer": answer, "ts": time.time()}
+        return AnswerResult(answer, "groq", model, language=answer_language)
 
     def generate_answer(self, context: str, question: str, farmer_profile: dict = None, language: str = "en",
                         matched_schemes: list = None, conversation_history: list = None,

@@ -232,7 +232,7 @@ def test_B_hindi_answer_falls_back_to_groq_translation_when_google_fails(ask):
         assert fact in ans
 
 
-def test_B_hindi_recommendation_cards_are_localized_too(ask):
+def test_B_hindi_recommendation_cards_are_localized_too(ask, monkeypatch):
     def translate(user, target):
         if target == "en":
             return EN_FOR.get(user, user)
@@ -244,6 +244,7 @@ def test_B_hindi_recommendation_cards_are_localized_too(ask):
             toks = _TOKEN.findall(line)
             lines.append(toks[0] + " यह योजना किसानों के लिए है और इसकी शर्तें योजना के नियमों में दी गई हैं। " + " ".join(toks[1:]))
         return "\n".join(lines)
+    monkeypatch.setattr(settings, "translate_cards_with_llm", True)          # opt-in: one more Groq call per question
     r, _, _ = ask(Q_HI, "hi", translator=machine("raise"), groq=RealisticGroq(translate=translate))
     d = r.json()
     assert r.headers["X-Cards-Translation"] == "translated"
@@ -543,3 +544,83 @@ def test_google_rate_limit_pauses_google_and_the_groq_fallback_still_translates(
     assert len(calls) == 1 and "google:cooling_down" in str(e.value)
     res = localize_with_fallbacks(FACTS_EN, "hi", ["PM-KISAN"], [("machine", svc.translate_text_strict), ("groq", _hi_facts)])
     assert res.status == "translated" and res.provider == "groq" and res.attempts == ["machine:all_providers_failed"]
+
+
+# ======================================================================================== direct answers (default mode)
+class DirectGroq(RealisticGroq):
+    """Answers in the language the system prompt asks for (what gpt-oss does with the direct-answer prompt)."""
+
+    def __init__(self, write_as=None, **kw):
+        super().__init__(**kw)
+        self.write_as = write_as            # force a language (to simulate the model answering in the wrong one)
+
+    def _create(self, **kw):
+        system = kw["messages"][0]["content"]
+        for lang, name in (("hi", "HINDI"), ("mr", "MARATHI")):
+            if f"ANSWER LANGUAGE - {name}" in system:
+                self.calls.append(kw)
+                if self.generation_exc:
+                    raise self.generation_exc
+                text = phrase_translate(ANSWER_EN, self.write_as or lang)
+                return types.SimpleNamespace(choices=[types.SimpleNamespace(
+                    finish_reason="stop", message=types.SimpleNamespace(content=text))])
+        return super()._create(**kw)
+
+
+@pytest.mark.parametrize("q,lang,ask_state", [(Q_HI, "hi", "आप किस राज्य में रहते हैं?"), (Q_MR, "mr", "तुम्ही कोणत्या राज्यात राहता?")])
+def test_direct_answer_is_one_groq_call_and_needs_no_translator(ask, q, lang, ask_state):
+    g = DirectGroq()
+    r, t, _ = ask(q, lang, translator=machine("raise"), groq=g)            # Google completely down
+    d = r.json()
+    answer_calls = [c for c in g.calls if g.kind(c) == "answer"]
+    assert len(answer_calls) == 1 and not g.translations()[1:]            # only the (tiny) question translation besides it
+    assert r.headers["X-Answer-Source"] == "groq" and r.headers["X-Translation-Provider"] == "groq_direct"
+    assert d["response_language"] == lang and d["translation_status"] == "translated"
+    assert detect_devanagari_language(d["answer"]) == lang and ask_state in d["answer"]
+    assert "PM-KISAN" in d["answer"] and "Rs. 6,000" in d["answer"]
+    ctx = answer_calls[0]["messages"][-1]["content"]
+    assert "RECORD 1 of" in ctx and "State not provided" in ctx           # grounded in the retrieved records
+    assert not [c for c in t.kinds("strict") if c[3] == lang and "To check" in c[1]]   # the answer was not machine-translated
+
+
+def test_direct_answer_in_the_wrong_language_falls_back_to_english_plus_translation(ask):
+    g = DirectGroq(write_as="hi")                                           # asked for Marathi, wrote Hindi
+    r, _, _ = ask(Q_MR, "mr", translator=machine("raise"), groq=g)
+    d = r.json()
+    assert r.headers.get("X-Translation-Provider") == "groq"                # fallback path: English answer, Groq translation
+    assert d["response_language"] == "mr" and detect_devanagari_language(d["answer"]) == "mr"
+
+
+def test_direct_answer_rate_limited_goes_straight_to_the_offline_answer(ask):
+    class RL(Exception):
+        status_code = 429
+        response = types.SimpleNamespace(headers={"retry-after": "3"})
+    g = DirectGroq(generation_exc=RL())
+    r, _, _ = ask(Q_HI, "hi", translator=machine("raise"), groq=g)
+    assert r.status_code == 200 and r.headers["X-Answer-Source"] == "offline"
+    assert len([c for c in g.calls if g.kind(c) == "answer"]) == 1          # no second call into a rate limit
+    assert r.json()["response_language"] == "en" and r.json()["translation_status"] == "failed"
+    groq_client._cooldown_until = 0.0
+
+
+def test_direct_prompt_asks_for_the_language_and_keeps_facts_latin():
+    from app.services.grounded_answer import system_prompt
+    mr = system_prompt("mr")
+    assert "ANSWER LANGUAGE - MARATHI" in mr and "NOT Hindi" in mr and "ASCII digits" in mr
+    assert "Plain, simple English" not in mr and system_prompt("en") == GROUNDING_SYSTEM_PROMPT
+
+
+def test_direct_answer_with_an_invented_number_is_rejected(ask):
+    bad = phrase_translate(ANSWER_EN, "hi") + "\nहेल्पलाइन: 1800-999-0000"
+    g = DirectGroq()
+    g.write_as = None
+    orig = g._create
+
+    def create(**kw):
+        res = orig(**kw)
+        if "ANSWER LANGUAGE - HINDI" in kw["messages"][0]["content"]:
+            res.choices[0].message.content = bad
+        return res
+    g.chat.completions.create = create
+    r, _, _ = ask(Q_HI, "hi", translator=machine("raise"), groq=g)
+    assert "1800-999-0000" not in r.json()["answer"]

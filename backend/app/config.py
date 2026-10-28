@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     # Answer translation providers, tried in order: "machine" (Azure Translator / free Google endpoint) and "groq"
     # (the configured Groq model, used only when Groq is configured). The first translation that passes validation wins.
     translation_provider_order: str = "machine,groq"
+    # "direct": for a non-English request Groq writes the answer in that language in ONE call (validated); the
+    # English-then-translate path is only the fallback. "translate": always English first, then translate (old path).
+    answer_generation_mode: str = "direct"
+    # Translate the recommendation-card descriptions with Groq as well (an extra Groq call per question; off by default
+    # to stay inside Groq's per-minute token limit). Machine translation is always tried for the cards.
+    translate_cards_with_llm: bool = False
 
     # Legacy Azure OpenAI settings: no longer used by the answer path (kept for rollback / test patch targets).
     azure_openai_endpoint: Optional[str] = None
