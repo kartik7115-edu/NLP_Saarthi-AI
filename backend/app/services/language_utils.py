@@ -168,6 +168,12 @@ def detect_devanagari_language(text: str) -> Optional[str]:
         return "hi"
     if mr >= 2 and mr >= 2 * max(hi, 1):
         return "mr"
+    # one language-specific word and none of the other language: trust it over the statistical model, which is
+    # unreliable on short questions (it called "पीएम किसान योजनेत किती पैसे मिळतात?" Hindi)
+    if mr >= 1 and hi == 0:
+        return "mr"
+    if hi >= 1 and mr == 0:
+        return "hi"
     if _detect_langs is not None and len(set(words)) >= 4:
         try:
             probs = {p.lang: p.prob for p in _detect_langs(" ".join(words))}

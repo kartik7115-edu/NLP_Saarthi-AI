@@ -34,8 +34,14 @@ class Settings(BaseSettings):
     # change) and a question asked once - e.g. by scripts/warm_answer_cache.py before a demo - is answered again without
     # calling Groq. The key includes the exact retrieved context, so a dataset change never serves a stale answer.
     # Empty string disables the file.
+    # Reviewed answers for frequent questions (app/data/faq_answers.json), served in these languages without an LLM call.
+    faq_answers_enabled: bool = True
+    faq_answer_languages: str = "hi,mr,en"
     answer_cache_file: str = "app/data/answer_cache.json"
     answer_cache_ttl_seconds: int = 7 * 24 * 3600
+    # Curated Hindi/Marathi answers for frequent questions (app/data/curated_answers.json, facts from schemes.json).
+    demo_answers_enabled: bool = True
+    demo_answers_file: str = "app/data/curated_answers.json"
 
     # Legacy Azure OpenAI settings: no longer used by the answer path (kept for rollback / test patch targets).
     azure_openai_endpoint: Optional[str] = None

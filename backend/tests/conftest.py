@@ -15,12 +15,22 @@ from app.config import settings  # noqa: E402
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "live: calls the real Groq API (needs GROQ_API_KEY and network); skipped otherwise")
+    config.addinivalue_line("markers", "faq: test runs with the FAQ answer bank enabled")
+
+
+@pytest.fixture(autouse=True)
+def _pipeline_not_faq(request, monkeypatch):
+    """The suites test the retrieval/LLM/translation pipeline: the FAQ answer bank is off unless a test turns it on."""
+    if not request.node.get_closest_marker("faq"):
+        monkeypatch.setattr(settings, "faq_answers_enabled", False)
 
 
 @pytest.fixture(autouse=True)
 def _no_answer_cache_file(monkeypatch):
-    """Tests never read or write the on-disk answer cache (backend/app/data/answer_cache.json)."""
+    """Tests never read or write the on-disk answer cache (backend/app/data/answer_cache.json), and exercise the
+    real pipeline rather than the curated answers (those have their own tests that switch them on)."""
     monkeypatch.setattr(settings, "answer_cache_file", "")
+    monkeypatch.setattr(settings, "demo_answers_enabled", False)
 
 
 @pytest.fixture(autouse=True)

@@ -15,6 +15,8 @@ from app.services.language_utils import (
     source_language_for_query,
 )
 from app.services.multilingual_query import english_keywords
+from app.services import faq_answers
+from app.services import curated_answers
 from app.services.recommendation_engine import recommend_schemes
 from app.services.translator import translator_service
 from app.services.brightdata_service import search_schemes as brightdata_search
@@ -210,6 +212,61 @@ def _state_applicable(rec, state) -> bool:
     return bool(state) and rec_state.lower() == str(state).strip().lower()
 
 
+def _curated_response(curated, request, requested_lang, response):
+    """Prepared answer in the question's language, with cards/links built from the scheme records."""
+    lang, topic = curated["lang"], curated["topic"]
+    if not rag_engine._all_schemes:
+        rag_engine.load_documents()
+    by_id = {s.get("id"): s for s in rag_engine._all_schemes}
+    cards, links, seen = [], [], set()
+    for sid in topic.get("schemes", []):
+        s = by_id.get(sid)
+        if not s:
+            continue
+        cards.append({"name": s["name"], "description": curated_answers.card_description(sid, lang) or s.get("description", ""),
+                      "type": s.get("type"), "state": s.get("state"), "documents_links": s.get("documents_links")})
+        for url in ([s.get("application_url")] if s.get("application_url") else []) + list(s.get("documents_links") or []):
+            if _is_safe_url(url) and url not in seen:
+                seen.add(url)
+                links.append({"title": s["name"], "url": url})
+    centers = []
+    if topic.get("intent") in ("application_process", "general_information"):
+        for c in get_help_centers(state=request.state or request.location):
+            centers.append({k: c.get(k) for k in ("name", "type", "phone", "address", "district", "maps_url")})
+    response.headers["X-Answer-Source"] = "curated"
+    response.headers["X-Requested-Language"] = requested_lang
+    response.headers["X-Answer-Language"] = lang
+    response.headers["X-Translation-Status"] = "not_needed"
+    logger.info("query lang=%s source=curated topic=%s match=%.2f", lang, topic.get("id"), curated["score"])
+    return QueryResponse(intent=topic.get("intent", "general_information"), answer=curated["answer"],
+                         recommended_schemes=cards, response_language=lang, doc_links=links[:6], nearest_centers=centers,
+                         requested_language=requested_lang, translation_status="not_needed")
+
+
+def _faq_response(entry, lang, response: Response) -> QueryResponse:
+    """Answer from the reviewed FAQ bank (same response shape as every other answer)."""
+    if not rag_engine._all_schemes:
+        rag_engine.load_documents()
+    by_id = {s.get("id"): s for s in rag_engine._all_schemes}
+    schemes = [by_id[i] for i in entry.get("schemes", []) if i in by_id]
+    cards, links, seen = [], [], set()
+    for s in schemes:
+        cards.append({"name": s["name"], "description": faq_answers.card_description(entry, lang, s),
+                      "type": s.get("type"), "state": s.get("state"), "documents_links": s.get("documents_links")})
+        for url in [s.get("application_url")] + list(s.get("documents_links") or []):
+            if url and _is_safe_url(url) and url not in seen:
+                seen.add(url)
+                links.append({"title": s["name"], "url": url})
+    response.headers["X-Answer-Source"] = "knowledge-base"
+    response.headers["X-Requested-Language"] = lang
+    response.headers["X-Answer-Language"] = lang
+    response.headers["X-Translation-Status"] = "not_needed"
+    logger.info("query lang=%s source=knowledge-base entry=%s", lang, entry.get("id"))
+    return QueryResponse(intent=entry.get("intent", "general_information"), answer=entry["answers"][lang],
+                         recommended_schemes=cards, response_language=lang, doc_links=links, nearest_centers=[],
+                         requested_language=lang, translation_status="not_needed")
+
+
 @router.post("", response_model=QueryResponse, include_in_schema=False)   # "/query" without the slash: no 307 round trip
 @router.post("/", response_model=QueryResponse)
 async def handle_query(request: QueryRequest, raw_request: Request, response: Response):
@@ -232,6 +289,14 @@ async def handle_query(request: QueryRequest, raw_request: Request, response: Re
         detected = await asyncio.to_thread(translator_service.detect_language, original_query)
         answer_lang = _resolve_auto_language(detected, original_query)
     query_lang = source_language_for_query(original_query, answer_lang)
+
+    faq = faq_answers.find(original_query, answer_lang)
+    if faq is not None:
+        return _faq_response(faq, answer_lang, response)
+
+    curated = curated_answers.match(original_query)
+    if curated:
+        return _curated_response(curated, request, answer_lang, response)
 
     # --- the QUESTION is made English for retrieval; the original question is kept for the answer language.
     english_query = original_query

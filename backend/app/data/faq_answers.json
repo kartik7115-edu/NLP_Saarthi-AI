@@ -1,0 +1,142 @@
+{
+  "_about": "Reviewed answers to frequent farmer questions, in Hindi, Marathi and English. Every fact is taken from app/data/schemes.json. Served by app/services/faq_answers.py when a question matches; edit or extend here.",
+  "entries": [
+    {
+      "id": "pm-kisan-documents",
+      "intent": "document_requirements",
+      "schemes": ["pm-kisan"],
+      "match": [
+        ["पीएम किसान", "पी एम किसान", "प्रधानमंत्री किसान", "किसान सम्मान", "किसान सन्मान", "pm kisan", "pmkisan"],
+        ["दस्तावेज", "कागजात", "कागज", "कागदपत्र", "डॉक्युमेंट", "डॉक्यूमेंट", "document", "papers"]
+      ],
+      "exclude": ["मानधन", "maan dhan", "maandhan", "पेंशन", "pension"],
+      "answers": {
+        "hi": "**PM-KISAN** में पंजीकरण के लिए ये दस्तावेज़ चाहिए:\n- आधार\n- बैंक खाते का विवरण (खाता संख्या और IFSC)\n- भूमि अभिलेख (खसरा/खतौनी या आपके राज्य का समकक्ष रिकॉर्ड)\n- आधार से जुड़ा मोबाइल नंबर\n\nकिस्तें मिलती रहें, इसके लिए eKYC पूरा करना ज़रूरी है। पंजीकरण https://pmkisan.gov.in/ पर (Farmers Corner > New Farmer Registration) या नज़दीकी कॉमन सर्विस सेंटर (CSC) पर करें।\nहेल्पलाइन: 155261 / 1800-115-526",
+        "mr": "**PM-KISAN** साठी नोंदणी करण्यासाठी ही कागदपत्रे लागतात:\n- आधार\n- बँक खात्याचा तपशील (खाते क्रमांक आणि IFSC)\n- जमिनीची कागदपत्रे (सातबारा/खसरा किंवा तुमच्या राज्यातील समकक्ष नोंद)\n- आधारशी जोडलेला मोबाइल नंबर\n\nहप्ते मिळत राहण्यासाठी eKYC पूर्ण करणे आवश्यक आहे. नोंदणी https://pmkisan.gov.in/ वर (Farmers Corner > New Farmer Registration) किंवा जवळच्या कॉमन सर्व्हिस सेंटरवर (CSC) करा.\nहेल्पलाइन: 155261 / 1800-115-526",
+        "en": "To register for **PM-KISAN** you need:\n- Aadhaar\n- Bank account details (account number and IFSC)\n- Land records (khasra/khatauni or the equivalent record in your state)\n- A mobile number linked to Aadhaar\n\neKYC must be completed to keep receiving the instalments. Register at https://pmkisan.gov.in/ (Farmers Corner > New Farmer Registration) or at your nearest Common Service Centre (CSC).\nHelpline: 155261 / 1800-115-526"
+      }
+    },
+    {
+      "id": "pm-kisan-apply",
+      "intent": "application_process",
+      "schemes": ["pm-kisan"],
+      "match": [
+        ["पीएम किसान", "पी एम किसान", "प्रधानमंत्री किसान", "किसान सम्मान", "किसान सन्मान", "pm kisan", "pmkisan"],
+        ["आवेदन", "अर्ज", "रजिस्ट्रेशन", "पंजीकरण", "नोंदणी", "रजिस्टर", "apply", "register", "registration"]
+      ],
+      "exclude": ["मानधन", "maan dhan", "maandhan", "पेंशन", "pension"],
+      "answers": {
+        "hi": "**PM-KISAN** के लिए आवेदन ऐसे करें:\n1. https://pmkisan.gov.in/ पर जाएँ, Farmers Corner खोलें और New Farmer Registration चुनें - या नज़दीकी कॉमन सर्विस सेंटर (CSC) या स्थानीय राजस्व/नोडल अधिकारी के पास जाएँ।\n2. अपना आधार, व्यक्तिगत, बैंक और ज़मीन का विवरण भरें।\n3. राज्य सरकार आपके भूमि अभिलेखों की जाँच करके पंजीकरण को मंज़ूरी देती है।\n4. Rs. 2,000 की किस्तें मिलती रहें, इसके लिए eKYC (OTP, बायोमेट्रिक या फेस ऑथेंटिकेशन) पूरा करें।\n\nहेल्पलाइन: 155261 / 1800-115-526",
+        "mr": "**PM-KISAN** साठी अर्ज असा करा:\n1. https://pmkisan.gov.in/ वर जा, Farmers Corner उघडा आणि New Farmer Registration निवडा - किंवा जवळच्या कॉमन सर्व्हिस सेंटरमध्ये (CSC) किंवा स्थानिक महसूल/नोडल अधिकाऱ्याकडे जा.\n2. तुमचा आधार, वैयक्तिक, बँक आणि जमिनीचा तपशील भरा.\n3. राज्य सरकार तुमच्या जमिनीच्या नोंदी तपासून नोंदणीला मंजुरी देते.\n4. Rs. 2,000 चे हप्ते मिळत राहण्यासाठी eKYC (OTP, बायोमेट्रिक किंवा फेस ऑथेंटिकेशन) पूर्ण करा.\n\nहेल्पलाइन: 155261 / 1800-115-526",
+        "en": "How to apply for **PM-KISAN**:\n1. Visit https://pmkisan.gov.in/, open Farmers Corner and choose New Farmer Registration - or go to your nearest Common Service Centre (CSC) or the local revenue/nodal official.\n2. Enter your Aadhaar, personal, bank and land details.\n3. The state verifies your land records and approves the registration.\n4. Complete eKYC (OTP, biometric or face authentication) to keep receiving the Rs. 2,000 instalments.\n\nHelpline: 155261 / 1800-115-526"
+      }
+    },
+    {
+      "id": "pm-kisan-about",
+      "intent": "benefits_query",
+      "schemes": ["pm-kisan"],
+      "match": [
+        ["पीएम किसान", "पी एम किसान", "प्रधानमंत्री किसान", "किसान सम्मान", "किसान सन्मान", "pm kisan", "pmkisan"]
+      ],
+      "exclude": ["मानधन", "maan dhan", "maandhan", "पेंशन", "pension"],
+      "answers": {
+        "hi": "**PM-KISAN** के तहत ज़मीन वाले किसान परिवारों को हर साल Rs. 6,000 की आय सहायता मिलती है। यह राशि Rs. 2,000 की तीन बराबर किस्तों में सीधे बैंक खाते में आती है।\n- कौन पात्र है: भूमि अभिलेखों के अनुसार खेती योग्य ज़मीन वाले किसान परिवार।\n- कौन पात्र नहीं है: आयकर देने वाले, संस्थागत भूमिधारक, संवैधानिक पदों पर रहे या मौजूदा व्यक्ति, सेवारत या सेवानिवृत्त सरकारी कर्मचारी, Rs. 10,000 या उससे अधिक मासिक पेंशन पाने वाले, और डॉक्टर, इंजीनियर, वकील जैसे पेशेवर।\n- किस्तें मिलती रहें, इसके लिए eKYC और आधार से जुड़ा बैंक खाता ज़रूरी है।\n\nहेल्पलाइन: 155261 / 1800-115-526 · पोर्टल: https://pmkisan.gov.in/",
+        "mr": "**PM-KISAN** अंतर्गत जमीनधारक शेतकरी कुटुंबांना दरवर्षी Rs. 6,000 उत्पन्न सहाय्य मिळते. ही रक्कम Rs. 2,000 च्या तीन समान हप्त्यांमध्ये थेट बँक खात्यात जमा होते.\n- कोण पात्र आहे: जमिनीच्या नोंदींनुसार लागवडीयोग्य जमीन असलेली शेतकरी कुटुंबे.\n- कोण पात्र नाही: आयकर भरणारे, संस्थात्मक जमीनधारक, घटनात्मक पदांवर असलेले किंवा राहिलेले, सेवेत असलेले किंवा निवृत्त सरकारी कर्मचारी, Rs. 10,000 किंवा अधिक मासिक पेन्शन घेणारे, आणि डॉक्टर, इंजिनिअर, वकील यांसारखे व्यावसायिक.\n- हप्ते मिळत राहण्यासाठी eKYC आणि आधारशी जोडलेले बँक खाते आवश्यक आहे.\n\nहेल्पलाइन: 155261 / 1800-115-526 · पोर्टल: https://pmkisan.gov.in/",
+        "en": "**PM-KISAN** gives landholding farmer families income support of Rs. 6,000 per year, paid in three equal instalments of Rs. 2,000 directly into their bank account.\n- Who is eligible: farmer families owning cultivable land as per the land records.\n- Not eligible: income-tax payers, institutional landholders, former and present holders of constitutional posts, serving or retired government employees, pensioners drawing Rs. 10,000 or more per month, and practising professionals such as doctors, engineers and lawyers.\n- eKYC and an Aadhaar-linked bank account are required to keep receiving the instalments.\n\nHelpline: 155261 / 1800-115-526 · Portal: https://pmkisan.gov.in/"
+      }
+    },
+    {
+      "id": "kcc",
+      "intent": "eligibility_check",
+      "schemes": ["kisan-credit-card"],
+      "match": [
+        ["किसान क्रेडिट", "क्रेडिट कार्ड", "केसीसी", "kisan credit", "credit card", "kcc"]
+      ],
+      "answers": {
+        "hi": "**Kisan Credit Card (KCC)** से किसानों को फसल उत्पादन, कटाई के बाद की ज़रूरतों और संबद्ध गतिविधियों के लिए समय पर अल्पकालिक ऋण मिलता है।\n- कौन आवेदन कर सकता है: अपनी ज़मीन पर खेती करने वाले, किरायेदार किसान, मौखिक पट्टेदार और बटाईदार; किसानों के स्वयं सहायता समूह / संयुक्त देयता समूह; मत्स्य पालन और पशुपालन (डेयरी, पोल्ट्री) भी शामिल हैं।\n- ब्याज: Rs. 3 lakh तक के अल्पकालिक फसल ऋण पर 7% सालाना; समय पर चुकाने पर 3% प्रोत्साहन मिलता है, जिससे प्रभावी दर 4% हो जाती है।\n- आवेदन कैसे करें: किसी भी बैंक शाखा (वाणिज्यिक, क्षेत्रीय ग्रामीण या सहकारी बैंक) में ज़मीन के कागज़ या पट्टा अनुबंध, आधार, PAN कार्ड, पासपोर्ट साइज़ फोटो और आवेदन पत्र के साथ।\n\nकिसान कॉल सेंटर: 1800-180-1551",
+        "mr": "**Kisan Credit Card (KCC)** मुळे शेतकऱ्यांना पीक उत्पादन, काढणीनंतरच्या गरजा आणि संलग्न व्यवसायांसाठी वेळेवर अल्पमुदतीचे कर्ज मिळते.\n- कोण अर्ज करू शकतो: स्वतःची जमीन कसणारे, खंडाने शेती करणारे शेतकरी, तोंडी भाडेपट्टेदार आणि वाटेकरी; शेतकऱ्यांचे स्वयं-सहायता गट / संयुक्त दायित्व गट; मत्स्यव्यवसाय आणि पशुपालन (दुग्धव्यवसाय, कुक्कुटपालन) देखील समाविष्ट आहेत.\n- व्याज: Rs. 3 lakh पर्यंतच्या अल्पमुदतीच्या पीक कर्जावर वार्षिक 7%; वेळेवर परतफेड केल्यास 3% प्रोत्साहन मिळते, त्यामुळे प्रभावी दर 4% होतो.\n- अर्ज कसा करावा: कोणत्याही बँक शाखेत (व्यापारी, प्रादेशिक ग्रामीण किंवा सहकारी बँक) जमिनीची कागदपत्रे किंवा भाडेकरार, आधार, PAN कार्ड, पासपोर्ट आकाराचे फोटो आणि अर्जासह.\n\nकिसान कॉल सेंटर: 1800-180-1551",
+        "en": "**Kisan Credit Card (KCC)** gives farmers timely short-term credit for crop production, post-harvest needs and allied activities.\n- Who can apply: owner cultivators, tenant farmers, oral lessees and sharecroppers; Self Help Groups / Joint Liability Groups of farmers; fisheries and animal husbandry (dairy, poultry) are also covered.\n- Interest: 7% a year on short-term crop loans up to Rs. 3 lakh; with the 3% prompt-repayment incentive the effective rate is 4%.\n- How to apply: at any bank branch (commercial, regional rural or cooperative bank) with land documents or a lease agreement, Aadhaar, PAN card, passport-size photographs and the application form.\n\nKisan Call Centre: 1800-180-1551"
+      }
+    },
+    {
+      "id": "pmfby",
+      "intent": "benefits_query",
+      "schemes": ["pmfby"],
+      "match": [
+        ["फसल बीमा", "पीक विमा", "फसल का बीमा", "बीमा योजना", "विमा योजना", "pmfby", "crop insurance", "fasal bima", "फसल बिमा", "पिक विमा"]
+      ],
+      "answers": {
+        "hi": "**Pradhan Mantri Fasal Bima Yojana (PMFBY)** प्राकृतिक आपदा, कीट और रोगों से फसल के नुकसान पर बीमा सुरक्षा देती है।\n- किसान द्वारा दिया जाने वाला प्रीमियम: खरीफ के लिए बीमित राशि का 2%, रबी के लिए 1.5% और वार्षिक व्यावसायिक/बागवानी फसलों के लिए 5%; बाकी प्रीमियम सरकार देती है।\n- कौन पात्र है: अपने क्षेत्र और मौसम के लिए अधिसूचित फसल उगाने वाले किसान, किरायेदार किसान और बटाईदार भी। नामांकन स्वैच्छिक है।\n- नामांकन कैसे करें: अपने बैंक, CSC, बीमा कंपनी के माध्यम से या https://pmfby.gov.in/ पर, मौसम की अंतिम तिथि से पहले।\n- फसल का नुकसान होने पर: 72 घंटे के भीतर 14447, Crop Insurance ऐप, अपने बैंक, CSC या कृषि कार्यालय पर सूचना दें।",
+        "mr": "**Pradhan Mantri Fasal Bima Yojana (PMFBY)** नैसर्गिक आपत्ती, कीड आणि रोगांमुळे होणाऱ्या पिकाच्या नुकसानीसाठी विमा संरक्षण देते.\n- शेतकऱ्याने भरायचा हप्ता: खरीपासाठी विमा रकमेच्या 2%, रब्बीसाठी 1.5% आणि वार्षिक व्यापारी/फलोत्पादन पिकांसाठी 5%; उरलेला हप्ता सरकार भरते.\n- कोण पात्र आहे: आपल्या क्षेत्रासाठी आणि हंगामासाठी अधिसूचित पीक घेणारे शेतकरी, खंडाने शेती करणारे आणि वाटेकरी शेतकरीही. सहभाग ऐच्छिक आहे.\n- नोंदणी कशी करावी: तुमची बँक, CSC, विमा कंपनी यांच्यामार्फत किंवा https://pmfby.gov.in/ वर, हंगामाच्या अंतिम तारखेपूर्वी.\n- पिकाचे नुकसान झाल्यास: 72 तासांच्या आत 14447, Crop Insurance ॲप, तुमची बँक, CSC किंवा कृषी कार्यालयाला कळवा.",
+        "en": "**Pradhan Mantri Fasal Bima Yojana (PMFBY)** insures crops against loss from natural calamities, pests and diseases.\n- Premium paid by the farmer: 2% of the sum insured for Kharif, 1.5% for Rabi and 5% for annual commercial/horticultural crops; the government pays the rest.\n- Who is eligible: farmers growing crops notified for their area and season, including tenant farmers and sharecroppers. Enrolment is voluntary.\n- How to enrol: through your bank, a CSC, an insurance company or at https://pmfby.gov.in/, before the last date for the season.\n- If your crop is damaged: report within 72 hours on 14447, the Crop Insurance app, your bank, a CSC or the agriculture office."
+      }
+    },
+    {
+      "id": "soil-health-card",
+      "intent": "general_information",
+      "schemes": ["soil-health-card"],
+      "match": [
+        ["मृदा स्वास्थ्य", "मृदा आरोग्य", "सॉयल हेल्थ", "सॉइल हेल्थ", "मिट्टी", "माती", "मृदा", "soil health", "soil"]
+      ],
+      "answers": {
+        "hi": "**Soil Health Card** योजना में आपकी ज़मीन की मिट्टी की जाँच होती है और खाद की सिफ़ारिशों वाला कार्ड मिलता है।\n- यह सभी किसानों के लिए है; हर भू-जोत के लिए एक कार्ड।\n- मिट्टी की 12 मापदंडों पर जाँच होती है (N, P, K, S, Zn, Fe, Cu, Mn, B, pH, EC, जैविक कार्बन)।\n- कार्ड में उर्वरक, जैव-उर्वरक और जैविक खाद की सही मात्रा बताई जाती है; कार्ड 22 भाषाओं में उपलब्ध हैं।\n- कैसे पाएँ: अपने स्थानीय कृषि कार्यालय, कृषि विज्ञान केंद्र (KVK) या मिट्टी जाँच प्रयोगशाला से संपर्क करें; खेत से नमूना लेकर मान्यता प्राप्त प्रयोगशाला में जाँच होती है।\n\nपोर्टल: https://soilhealth.dac.gov.in/",
+        "mr": "**Soil Health Card** योजनेत तुमच्या जमिनीच्या मातीची तपासणी होते आणि खतांच्या शिफारशींसह कार्ड मिळते.\n- ही योजना सर्व शेतकऱ्यांसाठी आहे; प्रत्येक जमीनधारणेसाठी एक कार्ड.\n- मातीची 12 घटकांवर तपासणी होते (N, P, K, S, Zn, Fe, Cu, Mn, B, pH, EC, सेंद्रिय कर्ब).\n- कार्डमध्ये रासायनिक खते, जैविक खते आणि सेंद्रिय निविष्ठांचे योग्य प्रमाण सांगितले जाते; कार्ड 22 भाषांमध्ये उपलब्ध आहे.\n- कसे मिळवावे: तुमचे स्थानिक कृषी कार्यालय, कृषी विज्ञान केंद्र (KVK) किंवा माती परीक्षण प्रयोगशाळेशी संपर्क साधा; शेतातून नमुना घेऊन मान्यताप्राप्त प्रयोगशाळेत तपासणी होते.\n\nपोर्टल: https://soilhealth.dac.gov.in/",
+        "en": "The **Soil Health Card** scheme tests the soil of your land holding and gives you a card with fertiliser recommendations.\n- It is for all farmers; one card is issued for each land holding.\n- The soil is tested on 12 parameters (N, P, K, S, Zn, Fe, Cu, Mn, B, pH, EC, organic carbon).\n- The card gives the right amount of fertilisers, bio-fertilisers and organic inputs; cards are available in 22 languages.\n- How to get it: contact your local agriculture office, Krishi Vigyan Kendra (KVK) or soil testing lab; a sample is collected from the field and tested in an approved lab.\n\nPortal: https://soilhealth.dac.gov.in/"
+      }
+    },
+    {
+      "id": "pm-kusum",
+      "intent": "benefits_query",
+      "schemes": ["pm-kusum"],
+      "match": [
+        ["सोलर", "सौर", "कुसुम", "kusum", "solar"]
+      ],
+      "answers": {
+        "hi": "**PM-KUSUM** योजना में किसानों को सब्सिडी पर सोलर पंप मिल सकता है।\n- घटक B: जहाँ बिजली ग्रिड नहीं है, वहाँ 7.5 HP तक के स्वतंत्र सोलर पंप।\n- घटक C: ग्रिड से जुड़े 7.5 HP तक के मौजूदा पंप को सौर ऊर्जा से चलाना; अतिरिक्त बिजली DISCOM को बेची जा सकती है।\n- खर्च का बँटवारा (अधिकांश राज्यों में): 30% केंद्रीय सहायता, कम से कम 30% राज्य सब्सिडी और किसान अधिकतम 40% देता है (बैंक ऋण लिया जा सकता है, इसलिए शुरुआत में लगभग 10%)। पूर्वोत्तर और पहाड़ी राज्यों में केंद्र का हिस्सा 50% है और किसान अधिकतम 20% देता है।\n- आवेदन: अपने राज्य की कार्यान्वयन एजेंसी के माध्यम से (https://pmkusum.mnre.gov.in/ देखें)। अभी आवेदन खुले हैं या नहीं, यह उनसे पूछें - योजना की अवधि 31.03.2026 तक दर्ज है।",
+        "mr": "**PM-KUSUM** योजनेत शेतकऱ्यांना अनुदानावर सौर पंप मिळू शकतो.\n- घटक B: जिथे वीज ग्रिड नाही, तिथे 7.5 HP पर्यंतचे स्वतंत्र सौर पंप.\n- घटक C: ग्रिडशी जोडलेला 7.5 HP पर्यंतचा सध्याचा पंप सौरऊर्जेवर चालवणे; जास्तीची वीज DISCOM ला विकता येते.\n- खर्चाची विभागणी (बहुतेक राज्यांत): 30% केंद्रीय सहाय्य, किमान 30% राज्य अनुदान आणि शेतकरी जास्तीत जास्त 40% भरतो (बँक कर्ज घेता येते, त्यामुळे सुरुवातीला सुमारे 10%). ईशान्येकडील आणि डोंगरी राज्यांत केंद्राचा वाटा 50% असून शेतकरी जास्तीत जास्त 20% भरतो.\n- अर्ज: तुमच्या राज्याच्या अंमलबजावणी यंत्रणेमार्फत (https://pmkusum.mnre.gov.in/ पाहा). सध्या अर्ज सुरू आहेत का, हे त्यांच्याकडे विचारा - योजनेचा कालावधी 31.03.2026 पर्यंत नोंदलेला आहे.",
+        "en": "Under **PM-KUSUM** farmers can get a solar pump with a subsidy.\n- Component B: standalone solar pumps of up to 7.5 HP where there is no grid supply.\n- Component C: solarise an existing grid-connected pump of up to 7.5 HP; surplus power can be sold to the DISCOM.\n- Cost sharing (most states): 30% central assistance, at least 30% state subsidy, and the farmer pays at most 40% (a bank loan can be used, so about 10% upfront). In the North Eastern and hill states the central share is 50% and the farmer pays at most 20%.\n- Apply through your state implementing agency (see https://pmkusum.mnre.gov.in/). Ask them whether applications are open now - the scheme period is listed as till 31.03.2026."
+      }
+    },
+    {
+      "id": "pm-kisan-maan-dhan",
+      "intent": "benefits_query",
+      "schemes": ["pm-kisan-maan-dhan"],
+      "match": [
+        ["पेंशन", "पेन्शन", "मानधन", "मान धन", "निवृत्तीवेतन", "निवृत्तिवेतन", "pension", "maan dhan", "maandhan"]
+      ],
+      "answers": {
+        "hi": "**PM Kisan Maan Dhan Yojana** छोटे और सीमांत किसानों के लिए एक स्वैच्छिक, अंशदायी पेंशन योजना है।\n- कौन पात्र है: 18-40 वर्ष के किसान जिनके पास 2 हेक्टेयर तक खेती योग्य ज़मीन है।\n- लाभ: 60 वर्ष की आयु के बाद कम से कम Rs. 3,000 प्रति माह पेंशन; सरकार आपके बराबर अंशदान करती है। सदस्य की मृत्यु के बाद पति/पत्नी को बराबर पेंशन मिलती है।\n- कौन पात्र नहीं है: PM Shram Yogi Maandhan, PM Laghu Vyapari Maandhan, NPS या ESIC के अंतर्गत आने वाले किसान।\n- दस्तावेज़: आधार, भूमि अभिलेख, बैंक खाते का विवरण, मोबाइल नंबर और आयु प्रमाण।\n\nपोर्टल: https://maandhan.in/ · हेल्पलाइन: 1800-267-6888",
+        "mr": "**PM Kisan Maan Dhan Yojana** ही अल्पभूधारक आणि सीमांत शेतकऱ्यांसाठी ऐच्छिक, अंशदायी पेन्शन योजना आहे.\n- कोण पात्र आहे: 18-40 वर्षे वयाचे शेतकरी ज्यांच्याकडे 2 हेक्टरपर्यंत लागवडीयोग्य जमीन आहे.\n- लाभ: वयाच्या 60 वर्षांनंतर किमान Rs. 3,000 दरमहा पेन्शन; सरकार तुमच्याइतकेच योगदान देते. सदस्याच्या मृत्यूनंतर पती/पत्नीला तेवढीच पेन्शन मिळते.\n- कोण पात्र नाही: PM Shram Yogi Maandhan, PM Laghu Vyapari Maandhan, NPS किंवा ESIC अंतर्गत असलेले शेतकरी.\n- कागदपत्रे: आधार, जमिनीच्या नोंदी, बँक खात्याचा तपशील, मोबाइल नंबर आणि वयाचा पुरावा.\n\nपोर्टल: https://maandhan.in/ · हेल्पलाइन: 1800-267-6888",
+        "en": "**PM Kisan Maan Dhan Yojana** is a voluntary, contributory pension scheme for small and marginal farmers.\n- Who is eligible: farmers aged 18-40 years with cultivable land of up to 2 hectares.\n- Benefit: a minimum pension of Rs. 3,000 per month after age 60; the government contributes an amount equal to yours. After the subscriber's death the spouse receives an equal pension.\n- Not eligible: farmers covered under PM Shram Yogi Maandhan, PM Laghu Vyapari Maandhan, NPS or ESIC.\n- Documents: Aadhaar, land records, bank account details, mobile number and age proof.\n\nPortal: https://maandhan.in/ · Helpline: 1800-267-6888"
+      }
+    },
+    {
+      "id": "micro-irrigation",
+      "intent": "benefits_query",
+      "schemes": ["pmksy-per-drop-more-crop"],
+      "match": [
+        ["ठिबक", "ड्रिप", "स्प्रिंकलर", "तुषार", "सिंचाई", "सिंचन", "drip", "sprinkler", "irrigation", "pmksy"]
+      ],
+      "answers": {
+        "hi": "**Pradhan Mantri Krishi Sinchayee Yojana (PMKSY) - Per Drop More Crop** के तहत ड्रिप या स्प्रिंकलर सिंचाई लगाने के लिए सहायता मिलती है।\n- सब्सिडी: छोटे और सीमांत किसानों के लिए सिस्टम की लागत का 55% और अन्य किसानों के लिए 45%।\n- सीमा: प्रति लाभार्थी अधिकतम 5 हेक्टेयर तक, दिशानिर्देशों में तय इकाई लागत के भीतर; सब्सिडी इलेक्ट्रॉनिक रूप से दी जाती है।\n- आवेदन कैसे करें: अपने राज्य के कृषि या बागवानी विभाग के माध्यम से - चयन के नियम और पोर्टल वही तय करते हैं।\n\nअधिक जानकारी: https://pmksy.gov.in/",
+        "mr": "**Pradhan Mantri Krishi Sinchayee Yojana (PMKSY) - Per Drop More Crop** अंतर्गत ठिबक किंवा तुषार सिंचन बसवण्यासाठी मदत मिळते.\n- अनुदान: अल्पभूधारक आणि सीमांत शेतकऱ्यांसाठी संचाच्या खर्चाच्या 55% आणि इतर शेतकऱ्यांसाठी 45%.\n- मर्यादा: प्रति लाभार्थी जास्तीत जास्त 5 हेक्टरपर्यंत, मार्गदर्शक सूचनांमधील युनिट खर्चाच्या आत; अनुदान इलेक्ट्रॉनिक पद्धतीने दिले जाते.\n- अर्ज कसा करावा: तुमच्या राज्याच्या कृषी किंवा फलोत्पादन विभागामार्फत - निवडीचे नियम आणि पोर्टल तेच ठरवतात.\n\nअधिक माहिती: https://pmksy.gov.in/",
+        "en": "Under **Pradhan Mantri Krishi Sinchayee Yojana (PMKSY) - Per Drop More Crop** you can get help to install drip or sprinkler irrigation.\n- Subsidy: 55% of the system cost for small and marginal farmers and 45% for other farmers.\n- Limit: up to 5 hectares per beneficiary, within the unit costs set in the guidelines; the subsidy is paid electronically.\n- How to apply: through your state agriculture or horticulture department - they set the selection rules and the portal.\n\nMore information: https://pmksy.gov.in/"
+      }
+    },
+    {
+      "id": "subsidy-eligibility",
+      "intent": "eligibility_check",
+      "generic": true,
+      "schemes": ["pm-kisan", "kisan-credit-card", "pmfby", "pm-kisan-maan-dhan"],
+      "match": [
+        ["पात्र", "पात्रता", "योग्यता", "eligible", "eligibility", "qualify"],
+        ["सब्सिडी", "अनुदान", "योजना", "लाभ", "subsidy", "scheme", "benefit", "कृषि", "कृषी", "agricultur"]
+      ],
+      "answers": {
+        "hi": "पात्रता हर योजना के अनुसार अलग होती है। अपनी जानकारी को इन केंद्रीय योजनाओं की शर्तों से मिलाएँ (ये सभी राज्यों में लागू हैं):\n- **PM-KISAN**: ज़मीन वाले किसान परिवार; आयकर देने वाले, सरकारी कर्मचारी और संस्थागत भूमिधारक बाहर हैं। लाभ: Rs. 6,000 प्रति वर्ष।\n- **Kisan Credit Card (KCC)**: अपनी ज़मीन पर खेती करने वाले, किरायेदार किसान, मौखिक पट्टेदार और बटाईदार।\n- **PMFBY (फसल बीमा)**: अपने क्षेत्र के लिए अधिसूचित फसल उगाने वाले किसान; नामांकन स्वैच्छिक है।\n- **PM Kisan Maan Dhan Yojana**: 18-40 वर्ष के छोटे और सीमांत किसान, जिनके पास 2 हेक्टेयर तक ज़मीन है।\n\nपुष्टि के लिए योजना का पोर्टल देखें या नज़दीकी CSC / कृषि कार्यालय जाएँ। आप किस राज्य में रहते हैं? कुछ राज्यों की अपनी योजनाएँ भी हैं।",
+        "mr": "पात्रता प्रत्येक योजनेनुसार वेगळी असते. तुमची माहिती या केंद्रीय योजनांच्या अटींशी जुळवून पाहा (या सर्व राज्यांत लागू आहेत):\n- **PM-KISAN**: जमीनधारक शेतकरी कुटुंबे; आयकर भरणारे, सरकारी कर्मचारी आणि संस्थात्मक जमीनधारक वगळले आहेत. लाभ: दरवर्षी Rs. 6,000.\n- **Kisan Credit Card (KCC)**: स्वतःची जमीन कसणारे, खंडाने शेती करणारे शेतकरी, तोंडी भाडेपट्टेदार आणि वाटेकरी.\n- **PMFBY (पीक विमा)**: आपल्या क्षेत्रासाठी अधिसूचित पीक घेणारे शेतकरी; सहभाग ऐच्छिक आहे.\n- **PM Kisan Maan Dhan Yojana**: 18-40 वर्षे वयाचे अल्पभूधारक आणि सीमांत शेतकरी, ज्यांच्याकडे 2 हेक्टरपर्यंत जमीन आहे.\n\nखात्री करण्यासाठी योजनेचे पोर्टल पाहा किंवा जवळच्या CSC / कृषी कार्यालयात जा. तुम्ही कोणत्या राज्यात राहता? काही राज्यांच्या स्वतःच्या योजनाही आहेत.",
+        "en": "Eligibility depends on the scheme. Compare your details with the conditions of these central schemes (they apply in every state):\n- **PM-KISAN**: landholding farmer families; income-tax payers, government employees and institutional landholders are excluded. Benefit: Rs. 6,000 per year.\n- **Kisan Credit Card (KCC)**: owner cultivators, tenant farmers, oral lessees and sharecroppers.\n- **PMFBY (crop insurance)**: farmers growing crops notified for their area; enrolment is voluntary.\n- **PM Kisan Maan Dhan Yojana**: small and marginal farmers aged 18-40 years with up to 2 hectares of land.\n\nTo confirm, check the scheme portal or visit your nearest CSC / agriculture office. Which state do you live in? Some states also run their own schemes."
+      }
+    }
+  ]
+}

@@ -145,3 +145,11 @@ test("popular-question pre-caching runs one request at a time, later, marked as 
   assert.ok(calls.every((c) => c.opts.headers["X-Saarthi-Precache"] === "1"));
   assert.ok(delays.includes(15000) && delays.includes(4000));
 });
+
+test("an answer in the question's language (Marathi while Hindi is selected) is not called 'shown in English'", async () => {
+  const env = boot({ selectedLang: "hi", voices: [VOICES.swara, VOICES.aarohi] });
+  env.ctx.displayResponse({ answer: MR, response_language: "mr", translation_status: "not_needed", recommended_schemes: [] }, false);
+  assert.ok(!chat(env).includes(I18N(env, "hi", "notTranslated")));
+  await sleep(20);
+  assert.equal(last(env).lang, "mr-IN");                       // spoken in Marathi, the language it is written in
+});

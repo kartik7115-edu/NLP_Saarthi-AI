@@ -668,7 +668,9 @@ function renderMarkdown(str) {
 function answerNotInSelectedLanguage(data, selectedLang) {
     if (!data || !data.answer || !selectedLang || selectedLang === "auto") return false;
     if (data.translation_status === "failed") return true;
-    if (data.response_language && data.response_language !== selectedLang) return true;
+    // The notice says "shown in English": show it only when the answer really is English (an answer in the language
+    // the question was typed in, e.g. Marathi while Hindi is selected, is not a translation failure).
+    if (data.response_language && data.response_language !== selectedLang) return data.response_language === "en";
     const shown = window.SaarthiTTS ? window.SaarthiTTS.effectiveAnswerLanguage(data.answer, data.response_language || selectedLang) : null;
     return !!(shown && shown.lang && shown.lang !== selectedLang);
 }
